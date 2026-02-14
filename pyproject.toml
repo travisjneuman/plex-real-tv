@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "plex-real-tv"
+version = "0.1.0"
+description = "Generate Plex playlists that simulate real TV with round-robin episodes and vintage commercial breaks"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+dependencies = [
+    "click>=8.1",
+    "PlexAPI>=4.15",
+    "yt-dlp>=2024.0",
+    "pyyaml>=6.0",
+    "pydantic>=2.0",
+    "rapidfuzz>=3.0",
+    "rich>=13.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+]
+
+[project.scripts]
+rtv = "rtv.cli:cli"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
