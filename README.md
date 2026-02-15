@@ -208,7 +208,7 @@ rtv generate --from-start --rescan
 rtv generate --from-start --export
 
 # Export to a specific path
-rtv generate --from-start --export --export-path "C:\Users\administrator\Desktop\playlist.csv"
+rtv generate --from-start --export --export-path "C:\Users\YourUser\Desktop\playlist.csv"
 
 # Combine everything: rescan, regenerate from scratch, export
 rtv generate --from-start --rescan --export
@@ -503,7 +503,7 @@ For a natural viewing experience, the between-episode approach works well — re
 
 ## Server Operations (Remote via SSH)
 
-The Plex server (`tjn-serve`, 192.168.1.10) runs Windows Server 2022. All operations are run remotely over SSH from the development machine — nothing is uploaded manually. The SSH config is at `~/.ssh/config` under host alias `plex`.
+The Plex server runs Windows Server 2022. All operations are run remotely over SSH from the development machine — nothing is uploaded manually. Set up an SSH config alias (e.g., `plex`) in `~/.ssh/config` pointing to your server.
 
 ### SSH Connection
 
@@ -511,7 +511,7 @@ The Plex server (`tjn-serve`, 192.168.1.10) runs Windows Server 2022. All operat
 # Test connection
 ssh plex "hostname && python --version"
 
-# Server: TJN-SERVE, user Administrator, key ~/.ssh/plex_server
+# Replace 'plex' with your SSH host alias
 ```
 
 ### Batch Commercial Downloads
@@ -530,7 +530,7 @@ Direct SSH execution (`ssh plex "python script.py"`) dies when the SSH session c
 
 ```bash
 # Create and immediately run a scheduled task
-ssh plex 'schtasks /create /tn "DownloadCommercials" /tr "cmd /c python C:\server_download_commercials.py > C:\commercial_download.log 2>&1" /sc once /st 00:00 /f /ru Administrator && schtasks /run /tn "DownloadCommercials"'
+ssh plex 'schtasks /create /tn "DownloadCommercials" /tr "cmd /c python C:\server_download_commercials.py > C:\commercial_download.log 2>&1" /sc once /st 00:00 /f /ru YourUsername && schtasks /run /tn "DownloadCommercials"'
 ```
 
 The `/st 00:00` warning is harmless — `schtasks /run` starts it immediately regardless.
