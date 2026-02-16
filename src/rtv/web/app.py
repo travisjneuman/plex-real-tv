@@ -7,6 +7,7 @@ from pathlib import Path
 from threading import Timer
 
 from fastapi import FastAPI
+from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -36,6 +37,10 @@ def create_app() -> FastAPI:
     app.include_router(shows_router)
     app.include_router(playlists_router)
     app.include_router(generate_router)
+
+    @app.get("/")
+    async def root():
+        return RedirectResponse("/generate/")
 
     return app
 
