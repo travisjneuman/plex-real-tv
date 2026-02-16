@@ -161,7 +161,7 @@ async def discover_servers(request: Request):
         name = srv.get("name", "Unknown")
         host = srv.get("host", "")
         port = srv.get("port", 32400)
-        url = f"http://{host}:{port}"
+        url = f"https://{host}:{port}"
         rows += (
             f'<button type="button" class="discovered-server" '
             f'hx-on:click="document.getElementById(\'plex_url\').value=\'{url}\'">'

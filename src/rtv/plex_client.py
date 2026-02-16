@@ -30,18 +30,26 @@ def _make_session() -> requests.Session:
 def connect(config: PlexConfig) -> PlexServer:
     """Connect to the Plex server with retry logic.
 
-    Retries once after a 5-second timeout, then raises with troubleshooting info.
-    Uses a session with SSL verification disabled for self-signed certs.
+    Always uses an SSL-bypass session (many Plex servers use self-signed certs).
+    If the URL is HTTP and the connection is reset, automatically retries with HTTPS
+    since Plex servers with "Secure connections: Required" reject plain HTTP.
     """
-    session = _make_session() if config.url.startswith("https://") else None
+    session = _make_session()
+    urls_to_try = [config.url]
+
+    # If user entered HTTP, also try HTTPS (Plex may require secure connections)
+    if config.url.startswith("http://"):
+        urls_to_try.append(config.url.replace("http://", "https://", 1))
+
     last_error: Exception | None = None
-    for attempt in range(MAX_RETRIES):
-        try:
-            return PlexServer(config.url, config.token, session=session, timeout=CONNECT_TIMEOUT)
-        except Exception as e:
-            last_error = e
-            if attempt < MAX_RETRIES - 1:
-                time.sleep(1)
+    for url in urls_to_try:
+        for attempt in range(MAX_RETRIES):
+            try:
+                return PlexServer(url, config.token, session=session, timeout=CONNECT_TIMEOUT)
+            except Exception as e:
+                last_error = e
+                if attempt < MAX_RETRIES - 1:
+                    time.sleep(1)
 
     raise ConnectionError(
         f"Could not connect to Plex at {config.url}\n"
@@ -51,7 +59,8 @@ def connect(config: PlexConfig) -> PlexServer:
         f"    2. Is the URL correct? (default: http://localhost:32400)\n"
         f"    3. Is the token valid? Find yours at:\n"
         f"       https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/\n"
-        f"    4. Is a firewall blocking the connection?"
+        f"    4. Is a firewall blocking the connection?\n"
+        f"    5. If Plex requires secure connections, use https:// in the URL"
     ) from last_error
 
 
@@ -132,7 +141,12 @@ def rescan_library(server: PlexServer, library_name: str, timeout: int = 120) ->
 def discover_servers() -> list[dict[str, str | int]]:
     """Find Plex servers on local network using GDM protocol.
 
-    Returns list of dicts with: name, host, port.
+    GDM entries are dicts like:
+        {"data": {"Name": ..., "Host": ..., "Port": ...}, "from": ("192.168.1.10", 32414)}
+
+    The data.Host is a .plex.direct hostname (not useful for direct connection).
+    The actual IP comes from the "from" tuple. We use HTTPS since many Plex
+    servers require secure connections.
     """
     try:
         from plexapi.gdm import GDM
@@ -140,10 +154,13 @@ def discover_servers() -> list[dict[str, str | int]]:
         gdm.scan()
         results = []
         for entry in gdm.entries:
+            data = entry.get("data", {})
+            # IP comes from the UDP source address, not from data.Host
+            ip = entry.get("from", ("",))[0]
             results.append({
-                "name": entry.get("Name", "Unknown"),
-                "host": entry.get("Host", ""),
-                "port": int(entry.get("Port", 32400)),
+                "name": data.get("Name", "Unknown"),
+                "host": ip,
+                "port": int(data.get("Port", 32400)),
             })
         return results
     except Exception:
