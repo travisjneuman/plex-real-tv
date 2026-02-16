@@ -78,7 +78,7 @@ class BreakConfig(BaseModel):
         return self
 
 
-VALID_SORT_VALUES = ("premiere_year", "premiere_year_desc", "alphabetical", "config_order")
+VALID_SORT_VALUES = ("premiere_year", "premiere_year_desc", "alphabetical")
 
 
 class PlaylistDefinition(BaseModel):
@@ -87,7 +87,7 @@ class PlaylistDefinition(BaseModel):
     name: str
     shows: list[PlaylistShow] = Field(default_factory=list)
     breaks: BreakConfig = Field(default_factory=BreakConfig)
-    episodes_per_generation: int = Field(default=30, ge=1)
+    episodes_per_generation: int = Field(default=0, ge=0)
     sort_by: str = "premiere_year"
 
     @model_validator(mode="after")

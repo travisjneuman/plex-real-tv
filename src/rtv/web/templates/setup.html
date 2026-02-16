@@ -5,7 +5,7 @@
 <div class="space-y-8">
     <div class="page-header">
         <h1 class="font-display text-2xl text-rtv-accent tracking-wide">Connection Setup</h1>
-        <p class="text-rtv-muted text-sm mt-1">Configure your Plex server and optional SSH connection.</p>
+        <p class="text-rtv-muted text-sm mt-1">Connect this app to your Plex Media Server so it can read your TV libraries and build playlists.</p>
     </div>
 
     <!-- Toast messages -->
@@ -50,26 +50,40 @@
                        value="{{ config.plex.url }}"
                        placeholder="http://localhost:32400"
                        class="form-input" required>
+                <span class="text-rtv-muted text-xs">
+                    The address of your Plex Media Server. If Plex is on this machine, use <code>http://localhost:32400</code>.
+                    If it's on another machine, use that machine's IP address (e.g. <code>https://192.168.1.10:32400</code>).
+                    Click "Discover" above to auto-detect servers on your network.
+                </span>
             </div>
 
             <div class="form-group">
                 <label for="plex_token" class="form-label">
                     Authentication Token
                     <a href="https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/"
-                       target="_blank" class="text-rtv-accent text-xs ml-2 hover:underline">[how to find]</a>
+                       target="_blank" class="text-rtv-accent text-xs ml-2 hover:underline">[how to find your token]</a>
                 </label>
                 <input type="password" name="plex_token" id="plex_token"
                        value="{{ config.plex.token }}"
                        placeholder="your-plex-token"
                        class="form-input" required>
+                <span class="text-rtv-muted text-xs">
+                    Your X-Plex-Token authenticates this app with your server. It's a long alphanumeric string
+                    found in any Plex URL while logged in. Click the link above for step-by-step instructions.
+                </span>
             </div>
 
             <div class="form-group">
-                <label for="tv_libraries" class="form-label">TV Libraries (comma-separated)</label>
+                <label for="tv_libraries" class="form-label">TV Libraries</label>
                 <input type="text" name="tv_libraries" id="tv_libraries"
                        value="{{ config.plex.tv_libraries | join(', ') }}"
                        placeholder="TV Shows"
                        class="form-input">
+                <span class="text-rtv-muted text-xs">
+                    Comma-separated names of your Plex TV libraries to search for shows.
+                    These must match the library names in Plex exactly (e.g. "TV Shows", "Anime").
+                    Most setups have just one library called "TV Shows".
+                </span>
             </div>
 
             <button type="submit" class="btn btn-accent">Save Plex Settings</button>
@@ -84,6 +98,14 @@
                 {{ "Enabled" if config.ssh.enabled else "Disabled" }}
             </span>
         </div>
+
+        <p class="text-rtv-muted text-sm mb-4">
+            <strong>Only needed if this app runs on a different machine than your Plex server.</strong>
+            For example, if you're running plex-real-tv on your laptop but Plex Media Server lives on a
+            dedicated server in your closet, SSH lets this app manage commercial files on the remote server
+            (upload, scan directories, etc.) without needing to copy files manually.
+            If Plex is on this same machine, you can leave SSH disabled.
+        </p>
 
         <form method="post" action="/setup/ssh" class="space-y-4">
             <div class="form-group">
@@ -103,12 +125,14 @@
                            value="{{ config.ssh.host }}"
                            placeholder="192.168.1.10"
                            class="form-input">
+                    <span class="text-rtv-muted text-xs">IP address or hostname of your Plex server machine.</span>
                 </div>
                 <div class="form-group">
                     <label for="ssh_port" class="form-label">Port</label>
                     <input type="number" name="ssh_port" id="ssh_port"
                            value="{{ config.ssh.port }}"
                            class="form-input" min="1" max="65535">
+                    <span class="text-rtv-muted text-xs">SSH port (almost always 22, the default).</span>
                 </div>
             </div>
 
@@ -119,6 +143,7 @@
                            value="{{ config.ssh.username }}"
                            placeholder="admin"
                            class="form-input">
+                    <span class="text-rtv-muted text-xs">The user account on the Plex server to log in as (e.g. "Administrator", "admin").</span>
                 </div>
                 <div class="form-group">
                     <label for="ssh_key_path" class="form-label">Key Path</label>
@@ -126,6 +151,7 @@
                            value="{{ config.ssh.key_path }}"
                            placeholder="~/.ssh/id_rsa"
                            class="form-input">
+                    <span class="text-rtv-muted text-xs">Path to your SSH private key file on this machine. Leave empty to use the default key or SSH agent.</span>
                 </div>
             </div>
 
@@ -135,6 +161,10 @@
                        value="{{ config.ssh.remote_commercial_path }}"
                        placeholder="F:\Commercials"
                        class="form-input">
+                <span class="text-rtv-muted text-xs">
+                    The folder on the remote Plex server where commercial video files are stored.
+                    This is the path as it appears on the server itself (e.g. "F:\Commercials" on Windows, "/media/commercials" on Linux).
+                </span>
             </div>
 
             <button type="submit" class="btn btn-accent">Save SSH Settings</button>

@@ -193,7 +193,7 @@ class TestPlaylistDefinition:
         assert pd.name == "My Playlist"
         assert pd.shows == []
         assert pd.breaks.enabled is True
-        assert pd.episodes_per_generation == 30
+        assert pd.episodes_per_generation == 0
         assert pd.sort_by == "premiere_year"
 
     def test_with_shows_and_breaks(self) -> None:
@@ -223,9 +223,14 @@ class TestPlaylistDefinition:
         with pytest.raises(ValueError, match="sort_by must be one of"):
             PlaylistDefinition(name="T", sort_by="random")
 
-    def test_rejects_zero_episodes_per_gen(self) -> None:
+    def test_accepts_zero_episodes_per_gen(self) -> None:
+        """0 means unlimited — generate all available episodes."""
+        pd = PlaylistDefinition(name="T", episodes_per_generation=0)
+        assert pd.episodes_per_generation == 0
+
+    def test_rejects_negative_episodes_per_gen(self) -> None:
         with pytest.raises(Exception):
-            PlaylistDefinition(name="T", episodes_per_generation=0)
+            PlaylistDefinition(name="T", episodes_per_generation=-1)
 
 
 # ---------------------------------------------------------------------------

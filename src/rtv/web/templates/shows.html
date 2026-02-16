@@ -9,6 +9,11 @@
             <p class="text-rtv-muted text-sm mt-1">
                 {{ shows | length }} show{{ "s" if shows | length != 1 else "" }} in the global pool.
             </p>
+            <p class="text-rtv-muted text-xs mt-1">
+                The show pool is the master list of all TV shows available for playlists.
+                Add shows here first, then assign them to individual playlists on the Playlists page.
+                Disabling a show removes it from all playlist generations without deleting it.
+            </p>
         </div>
         <button class="btn btn-outline btn-sm"
                 hx-post="/shows/scan"
@@ -33,9 +38,14 @@
 
     <!-- Add show form -->
     <section class="card">
-        <h2 class="card-title mb-4">Add Show Manually</h2>
+        <h2 class="card-title mb-2">Add Show Manually</h2>
+        <p class="text-rtv-muted text-xs mb-4">
+            Type the show name exactly as it appears in your Plex library.
+            The Library field should match the Plex library it lives in (usually "TV Shows").
+            Year is optional but helps sort shows by premiere date.
+        </p>
         <form method="post" action="/shows/add" class="flex flex-col sm:flex-row gap-3">
-            <input type="text" name="show_name" placeholder="Show name"
+            <input type="text" name="show_name" placeholder="Show name (as it appears in Plex)"
                    class="form-input flex-1" required>
             <input type="text" name="library" placeholder="Library"
                    value="TV Shows" class="form-input sm:w-40">
@@ -72,12 +82,12 @@
                         <button class="toggle-btn toggle-on"
                                 hx-post="/shows/toggle/{{ show.name }}"
                                 hx-swap="outerHTML"
-                                title="Click to disable">ON</button>
+                                title="Click to disable — disabled shows are skipped during playlist generation">ON</button>
                         {% else %}
                         <button class="toggle-btn toggle-off"
                                 hx-post="/shows/toggle/{{ show.name }}"
                                 hx-swap="outerHTML"
-                                title="Click to enable">OFF</button>
+                                title="Click to enable — this show will be included in playlist generation again">OFF</button>
                         {% endif %}
                     </td>
                     <td class="text-sm">
@@ -94,7 +104,7 @@
                                 hx-post="/shows/remove/{{ show.name }}"
                                 hx-target="#shows-container"
                                 hx-swap="innerHTML"
-                                hx-confirm="Remove '{{ show.name }}' from the pool?">
+                                hx-confirm="Remove '{{ show.name }}' from the pool? This also removes it from any playlists.">
                             &times;
                         </button>
                     </td>
@@ -106,7 +116,7 @@
     {% else %}
     <section class="card card-dim text-center py-12">
         <p class="text-rtv-muted text-lg">No shows in the pool yet.</p>
-        <p class="text-rtv-muted text-sm mt-2">Add shows manually above or scan your Plex library.</p>
+        <p class="text-rtv-muted text-sm mt-2">Add shows manually above, or click "Scan Plex" to import from your Plex library.</p>
     </section>
     {% endif %}
 </div>

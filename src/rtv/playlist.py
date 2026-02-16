@@ -232,7 +232,13 @@ def generate_playlist(
             "Use 'rtv playlist-add' to add shows."
         )
 
-    ep_count = episode_count or playlist.episodes_per_generation
+    # 0 means unlimited — generate until all shows are exhausted
+    if episode_count is not None and episode_count > 0:
+        ep_count = episode_count
+    elif playlist.episodes_per_generation > 0:
+        ep_count = playlist.episodes_per_generation
+    else:
+        ep_count = 999999  # effectively unlimited
 
     # Reset positions if requested
     if from_start:
@@ -288,7 +294,6 @@ def generate_playlist(
         show_states.sort(key=lambda s: (s.year is None, -(s.year or 0)))
     elif sort_by == "alphabetical":
         show_states.sort(key=lambda s: s.name.lower())
-    # "config_order" — no sorting needed
 
     # Load commercials
     breaks = playlist.breaks

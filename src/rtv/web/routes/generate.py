@@ -78,7 +78,15 @@ async def generate_stream(
             }
             return
 
-        ep_count = episode_count if episode_count > 0 else pl.episodes_per_generation
+        # 0 means unlimited — run until all shows are exhausted
+        if episode_count > 0:
+            ep_count = episode_count
+        elif pl.episodes_per_generation > 0:
+            ep_count = pl.episodes_per_generation
+        else:
+            ep_count = 0  # pass 0 to generate_playlist, it handles unlimited
+
+        display_total = ep_count if ep_count > 0 else "all"
 
         yield {
             "event": "progress",
@@ -125,10 +133,14 @@ async def generate_stream(
 
         from rtv.playlist import generate_playlist
 
+        # Pass None for episode_count when 0 (unlimited) — generate_playlist
+        # handles None by falling back to playlist default (which may also be 0/unlimited)
+        gen_ep_count = ep_count if ep_count > 0 else None
+
         gen_future = loop.run_in_executor(
             None,
             lambda: generate_playlist(
-                config, pl, server, ep_count, from_start,
+                config, pl, server, gen_ep_count, from_start,
                 progress_callback=progress_callback,
             ),
         )

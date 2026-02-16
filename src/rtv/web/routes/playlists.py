@@ -46,7 +46,7 @@ async def playlists_page(request: Request):
 async def create_playlist(
     request: Request,
     name: str = Form(...),
-    episodes_per_generation: int = Form(30),
+    episodes_per_generation: int = Form(0),
     break_style: str = Form("single"),
     frequency: int = Form(1),
     sort_by: str = Form("premiere_year"),
@@ -84,7 +84,7 @@ async def create_playlist(
             style=break_style if breaks_enabled else "single",
             frequency=max(1, frequency),
         ),
-        episodes_per_generation=max(1, episodes_per_generation),
+        episodes_per_generation=max(0, episodes_per_generation),
         sort_by=sort_by,
     )
     config.playlists.append(new_pl)
@@ -149,7 +149,7 @@ async def playlist_detail(request: Request, playlist_name: str):
 async def update_playlist(
     request: Request,
     playlist_name: str,
-    episodes_per_generation: int = Form(30),
+    episodes_per_generation: int = Form(0),
     break_style: str = Form("single"),
     frequency: int = Form(1),
     min_gap: int = Form(50),
@@ -173,7 +173,7 @@ async def update_playlist(
         min_gap=max(1, min_gap),
         block_duration=BlockDuration(min=max(1, block_min), max=max(1, block_max)),
     )
-    pl.episodes_per_generation = max(1, episodes_per_generation)
+    pl.episodes_per_generation = max(0, episodes_per_generation)
     pl.sort_by = sort_by
 
     try:

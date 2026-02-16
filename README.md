@@ -161,7 +161,7 @@ playlists:
       min_gap: 50           # no-repeat window for commercials
       block_duration: { min: 30, max: 120 }
     episodes_per_generation: 30
-    sort_by: premiere_year  # premiere_year | premiere_year_desc | alphabetical | config_order
+    sort_by: premiere_year  # premiere_year | premiere_year_desc | alphabetical
 
 default_playlist: "Real TV"
 

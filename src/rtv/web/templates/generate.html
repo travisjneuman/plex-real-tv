@@ -5,7 +5,10 @@
 <div class="space-y-8">
     <div class="page-header">
         <h1 class="font-display text-2xl text-rtv-accent tracking-wide">Generate Playlist</h1>
-        <p class="text-rtv-muted text-sm mt-1">Build a round-robin playlist with commercial breaks on your Plex server.</p>
+        <p class="text-rtv-muted text-sm mt-1">
+            Build a round-robin playlist on your Plex server. Episodes from each show play in order,
+            cycling through all shows with commercial breaks in between &mdash; just like real TV.
+        </p>
     </div>
 
     <!-- Generation form -->
@@ -22,12 +25,16 @@
                         </option>
                         {% endfor %}
                     </select>
+                    <span class="text-rtv-muted text-xs">Choose which playlist to generate. Each playlist has its own show lineup and settings.</span>
                 </div>
                 <div class="form-group">
-                    <label for="episode_count" class="form-label">Episode Count</label>
+                    <label for="episode_count" class="form-label">Episode Count Override</label>
                     <input type="number" id="episode_count" value="0" min="0" max="500"
-                           class="form-input" placeholder="0 = use default">
-                    <span class="text-rtv-muted text-xs">0 = use playlist default</span>
+                           class="form-input" placeholder="0 = use playlist setting">
+                    <span class="text-rtv-muted text-xs">
+                        Override the playlist's max episodes for this generation only.
+                        Leave at 0 to use the playlist's configured setting.
+                    </span>
                 </div>
                 <div class="form-group">
                     <label class="form-label">&nbsp;</label>
@@ -35,6 +42,9 @@
                         <input type="checkbox" id="from_start" class="form-checkbox">
                         <span class="text-sm">Reset to S01E01</span>
                     </label>
+                    <span class="text-rtv-muted text-xs">
+                        Start every show from Season 1, Episode 1 instead of picking up where you left off.
+                    </span>
                 </div>
             </div>
 
