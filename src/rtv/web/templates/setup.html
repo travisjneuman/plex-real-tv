@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{% block title %}Setup{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+    <div class="page-header">
+        <h1 class="font-display text-2xl text-rtv-accent tracking-wide">Connection Setup</h1>
+        <p class="text-rtv-muted text-sm mt-1">Configure your Plex server and optional SSH connection.</p>
+    </div>
+
+    <!-- Toast messages -->
+    {% if message %}
+    <div class="toast toast-success">{{ message }}</div>
+    {% endif %}
+    {% if error %}
+    <div class="toast toast-error">{{ error }}</div>
+    {% endif %}
+
+    <!-- Plex Connection -->
+    <section class="card">
+        <div class="card-header">
+            <h2 class="card-title">Plex Server</h2>
+            <div class="flex gap-2">
+                <button class="btn btn-sm btn-ghost"
+                        hx-post="/setup/discover"
+                        hx-target="#discover-results"
+                        hx-swap="innerHTML"
+                        hx-indicator="#discover-spinner">
+                    <span id="discover-spinner" class="htmx-indicator spinner-sm"></span>
+                    Discover
+                </button>
+                <button class="btn btn-sm btn-outline"
+                        hx-post="/setup/test-connection"
+                        hx-target="#connection-status"
+                        hx-swap="innerHTML"
+                        hx-indicator="#test-spinner">
+                    <span id="test-spinner" class="htmx-indicator spinner-sm"></span>
+                    Test
+                </button>
+            </div>
+        </div>
+
+        <div id="discover-results" class="mb-4"></div>
+        <div id="connection-status" class="mb-4"></div>
+
+        <form method="post" action="/setup/plex" class="space-y-4">
+            <div class="form-group">
+                <label for="plex_url" class="form-label">Server URL</label>
+                <input type="url" name="plex_url" id="plex_url"
+                       value="{{ config.plex.url }}"
+                       placeholder="http://localhost:32400"
+                       class="form-input" required>
+            </div>
+
+            <div class="form-group">
+                <label for="plex_token" class="form-label">
+                    Authentication Token
+                    <a href="https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/"
+                       target="_blank" class="text-rtv-accent text-xs ml-2 hover:underline">[how to find]</a>
+                </label>
+                <input type="password" name="plex_token" id="plex_token"
+                       value="{{ config.plex.token }}"
+                       placeholder="your-plex-token"
+                       class="form-input" required>
+            </div>
+
+            <div class="form-group">
+                <label for="tv_libraries" class="form-label">TV Libraries (comma-separated)</label>
+                <input type="text" name="tv_libraries" id="tv_libraries"
+                       value="{{ config.plex.tv_libraries | join(', ') }}"
+                       placeholder="TV Shows"
+                       class="form-input">
+            </div>
+
+            <button type="submit" class="btn btn-accent">Save Plex Settings</button>
+        </form>
+    </section>
+
+    <!-- SSH Configuration -->
+    <section class="card">
+        <div class="card-header">
+            <h2 class="card-title">SSH (Remote Server)</h2>
+            <span class="badge {% if config.ssh.enabled %}badge-success{% else %}badge-muted{% endif %}">
+                {{ "Enabled" if config.ssh.enabled else "Disabled" }}
+            </span>
+        </div>
+
+        <form method="post" action="/setup/ssh" class="space-y-4">
+            <div class="form-group">
+                <label class="flex items-center gap-3 cursor-pointer">
+                    <input type="checkbox" name="ssh_enabled"
+                           {% if config.ssh.enabled %}checked{% endif %}
+                           class="form-checkbox"
+                           value="true">
+                    <span class="form-label mb-0">Enable SSH for remote file management</span>
+                </label>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="form-group">
+                    <label for="ssh_host" class="form-label">Host</label>
+                    <input type="text" name="ssh_host" id="ssh_host"
+                           value="{{ config.ssh.host }}"
+                           placeholder="192.168.1.10"
+                           class="form-input">
+                </div>
+                <div class="form-group">
+                    <label for="ssh_port" class="form-label">Port</label>
+                    <input type="number" name="ssh_port" id="ssh_port"
+                           value="{{ config.ssh.port }}"
+                           class="form-input" min="1" max="65535">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="form-group">
+                    <label for="ssh_username" class="form-label">Username</label>
+                    <input type="text" name="ssh_username" id="ssh_username"
+                           value="{{ config.ssh.username }}"
+                           placeholder="admin"
+                           class="form-input">
+                </div>
+                <div class="form-group">
+                    <label for="ssh_key_path" class="form-label">Key Path</label>
+                    <input type="text" name="ssh_key_path" id="ssh_key_path"
+                           value="{{ config.ssh.key_path }}"
+                           placeholder="~/.ssh/id_rsa"
+                           class="form-input">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="ssh_remote_path" class="form-label">Remote Commercial Path</label>
+                <input type="text" name="ssh_remote_path" id="ssh_remote_path"
+                       value="{{ config.ssh.remote_commercial_path }}"
+                       placeholder="F:\Commercials"
+                       class="form-input">
+            </div>
+
+            <button type="submit" class="btn btn-accent">Save SSH Settings</button>
+        </form>
+    </section>
+
+    <!-- Config status -->
+    <section class="card card-dim">
+        <div class="flex items-center justify-between">
+            <div>
+                <span class="text-rtv-muted text-sm">Config version:</span>
+                <span class="text-rtv-text ml-1">v{{ config.config_version }}</span>
+            </div>
+            <div>
+                <span class="text-rtv-muted text-sm">Shows:</span>
+                <span class="text-rtv-text ml-1">{{ config.shows | length }}</span>
+                <span class="text-rtv-muted text-sm ml-4">Playlists:</span>
+                <span class="text-rtv-text ml-1">{{ config.playlists | length }}</span>
+            </div>
+        </div>
+    </section>
+</div>
+{% endblock %}

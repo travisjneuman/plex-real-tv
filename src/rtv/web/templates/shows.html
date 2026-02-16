@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block title %}Shows{% endblock %}
+
+{% block content %}
+<div id="shows-container" class="space-y-8">
+    <div class="page-header flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+            <h1 class="font-display text-2xl text-rtv-accent tracking-wide">Show Pool</h1>
+            <p class="text-rtv-muted text-sm mt-1">
+                {{ shows | length }} show{{ "s" if shows | length != 1 else "" }} in the global pool.
+            </p>
+        </div>
+        <button class="btn btn-outline btn-sm"
+                hx-post="/shows/scan"
+                hx-target="#scan-results"
+                hx-swap="innerHTML"
+                hx-indicator="#scan-spinner">
+            <span id="scan-spinner" class="htmx-indicator spinner-sm"></span>
+            Scan Plex
+        </button>
+    </div>
+
+    <!-- Toast messages -->
+    {% if message %}
+    <div class="toast toast-success">{{ message }}</div>
+    {% endif %}
+    {% if error %}
+    <div class="toast toast-error">{{ error }}</div>
+    {% endif %}
+
+    <!-- Scan results slot -->
+    <div id="scan-results"></div>
+
+    <!-- Add show form -->
+    <section class="card">
+        <h2 class="card-title mb-4">Add Show Manually</h2>
+        <form method="post" action="/shows/add" class="flex flex-col sm:flex-row gap-3">
+            <input type="text" name="show_name" placeholder="Show name"
+                   class="form-input flex-1" required>
+            <input type="text" name="library" placeholder="Library"
+                   value="TV Shows" class="form-input sm:w-40">
+            <input type="text" name="year" placeholder="Year"
+                   class="form-input sm:w-24">
+            <button type="submit" class="btn btn-accent">Add</button>
+        </form>
+    </section>
+
+    <!-- Show table -->
+    {% if shows %}
+    <section class="card overflow-x-auto">
+        <table class="rtv-table">
+            <thead>
+                <tr>
+                    <th class="w-10">#</th>
+                    <th>Show</th>
+                    <th class="w-16 text-center">Year</th>
+                    <th>Library</th>
+                    <th class="w-24 text-center">Status</th>
+                    <th>Playlists</th>
+                    <th class="w-20 text-center">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for show in shows %}
+                <tr class="{% if not show.enabled %}opacity-50{% endif %}">
+                    <td class="text-rtv-muted">{{ loop.index }}</td>
+                    <td class="font-medium">{{ show.name }}</td>
+                    <td class="text-center text-rtv-muted">{{ show.year or "-" }}</td>
+                    <td class="text-rtv-muted text-sm">{{ show.library }}</td>
+                    <td class="text-center">
+                        {% if show.enabled %}
+                        <button class="toggle-btn toggle-on"
+                                hx-post="/shows/toggle/{{ show.name }}"
+                                hx-swap="outerHTML"
+                                title="Click to disable">ON</button>
+                        {% else %}
+                        <button class="toggle-btn toggle-off"
+                                hx-post="/shows/toggle/{{ show.name }}"
+                                hx-swap="outerHTML"
+                                title="Click to enable">OFF</button>
+                        {% endif %}
+                    </td>
+                    <td class="text-sm">
+                        {% if membership.get(show.name) %}
+                            {% for pl in membership[show.name] %}
+                            <span class="badge badge-accent">{{ pl }}</span>
+                            {% endfor %}
+                        {% else %}
+                            <span class="text-rtv-muted">&mdash;</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-center">
+                        <button class="btn btn-sm btn-danger"
+                                hx-post="/shows/remove/{{ show.name }}"
+                                hx-target="#shows-container"
+                                hx-swap="innerHTML"
+                                hx-confirm="Remove '{{ show.name }}' from the pool?">
+                            &times;
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </section>
+    {% else %}
+    <section class="card card-dim text-center py-12">
+        <p class="text-rtv-muted text-lg">No shows in the pool yet.</p>
+        <p class="text-rtv-muted text-sm mt-2">Add shows manually above or scan your Plex library.</p>
+    </section>
+    {% endif %}
+</div>
+{% endblock %}
