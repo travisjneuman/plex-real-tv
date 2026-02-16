@@ -1,7 +1,8 @@
-"""Click CLI entry point for plex-real-tv."""
+"""Click CLI entry point for plex-real-tv v2."""
 
 from __future__ import annotations
 
+import copy
 import shutil
 from datetime import datetime
 from pathlib import Path
@@ -16,8 +17,11 @@ from rtv.config import (
     PlexConfig,
     CommercialConfig,
     BlockDuration,
-    PlaylistConfig,
-    ShowConfig,
+    SSHConfig,
+    GlobalShow,
+    PlaylistShow,
+    PlaylistDefinition,
+    BreakConfig,
     CommercialCategory,
     HistoryEntry,
     DEFAULT_SHOWS,
@@ -25,6 +29,9 @@ from rtv.config import (
     save_config,
     find_config_path,
     get_config_or_exit,
+    # Legacy (kept for reference)
+    ShowConfig,
+    PlaylistConfig,
 )
 from rtv import display
 
@@ -38,7 +45,7 @@ def cli() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Phase 2: init + status
+# init + status
 # ---------------------------------------------------------------------------
 
 
@@ -78,17 +85,24 @@ def init() -> None:
             library_path=commercial_path,
             block_duration=BlockDuration(),
         ),
-        playlist=PlaylistConfig(),
     )
 
     # Offer to seed with default shows
     if click.confirm("Seed config with 30 default shows?", default=True):
         for entry in DEFAULT_SHOWS:
-            config.shows.append(ShowConfig(
+            config.shows.append(GlobalShow(
                 name=str(entry["name"]),
                 year=int(entry["year"]),  # type: ignore[arg-type]
             ))
-        display.success(f"Added {len(DEFAULT_SHOWS)} shows to rotation.")
+        display.success(f"Added {len(DEFAULT_SHOWS)} shows to pool.")
+
+    # Create default playlist with all shows
+    default_pl = PlaylistDefinition(
+        name="Real TV",
+        shows=[PlaylistShow(name=s.name) for s in config.shows],
+    )
+    config.playlists.append(default_pl)
+    config.default_playlist = "Real TV"
 
     path = save_config(config)
     display.success(f"\nConfig saved to {path}")
@@ -142,11 +156,12 @@ def status() -> None:
         show_count=len(config.shows),
         commercial_count=commercial_count,
         commercial_duration_total=commercial_duration,
+        playlist_count=len(config.playlists),
     )
 
 
 # ---------------------------------------------------------------------------
-# Phase 3: Show management
+# Show management
 # ---------------------------------------------------------------------------
 
 
@@ -154,13 +169,13 @@ def status() -> None:
 @click.argument("name")
 @click.option("--library", default=None, help="Plex library name (searches all if not specified)")
 def add_show(name: str, library: str | None) -> None:
-    """Add a show to the rotation (fuzzy matches against Plex library)."""
+    """Add a show to the global pool (fuzzy matches against Plex library)."""
     config, config_path = get_config_or_exit()
 
     # Check for duplicate
     for show in config.shows:
         if show.name.lower() == name.lower():
-            raise click.ClickException(f"'{name}' is already in the rotation.")
+            raise click.ClickException(f"'{name}' is already in the pool.")
 
     from rtv import plex_client, matcher
 
@@ -169,10 +184,9 @@ def add_show(name: str, library: str | None) -> None:
     except Exception as e:
         raise click.ClickException(f"Could not connect to Plex: {e}") from e
 
-    # Determine which libraries to search
     search_libs = [library] if library else config.plex.tv_libraries
 
-    all_shows: list[tuple[str, str]] = []  # (show_title, library_name)
+    all_shows: list[tuple[str, str]] = []
     with Progress(
         SpinnerColumn(),
         TextColumn("[cyan]Scanning Plex libraries...[/cyan]"),
@@ -193,12 +207,10 @@ def add_show(name: str, library: str | None) -> None:
 
     show_titles = [s[0] for s in all_shows]
 
-    # Try exact match first
     exact = matcher.exact_match(name, show_titles)
     if exact:
         matched_title = exact
     else:
-        # Fuzzy match
         matches = matcher.fuzzy_match(name, show_titles, limit=5)
         if not matches:
             raise click.ClickException(
@@ -218,10 +230,8 @@ def add_show(name: str, library: str | None) -> None:
                 return
             matched_title = matches[choice - 1].title
 
-    # Find which library this show is in
     matched_lib = next(lib for title, lib in all_shows if title == matched_title)
 
-    # Validate the show has episodes
     try:
         show_obj = plex_client.get_show(server, matched_title, matched_lib)
         episodes = show_obj.episodes()
@@ -233,11 +243,9 @@ def add_show(name: str, library: str | None) -> None:
 
     show_year: int | None = getattr(show_obj, "year", None)
 
-    new_show = ShowConfig(
+    new_show = GlobalShow(
         name=matched_title,
         library=matched_lib,
-        current_season=1,
-        current_episode=1,
         year=show_year,
     )
     config.shows.append(new_show)
@@ -249,7 +257,7 @@ def add_show(name: str, library: str | None) -> None:
 @cli.command("remove-show")
 @click.argument("name")
 def remove_show(name: str) -> None:
-    """Remove a show from the rotation."""
+    """Remove a show from the global pool."""
     config, config_path = get_config_or_exit()
 
     name_lower = name.lower()
@@ -260,9 +268,7 @@ def remove_show(name: str) -> None:
             break
 
     if found_idx is None:
-        # Try fuzzy match against configured shows
         from rtv import matcher
-
         show_names = [s.name for s in config.shows]
         match = matcher.best_match(name, show_names)
         if match:
@@ -275,23 +281,31 @@ def remove_show(name: str) -> None:
                 return
         else:
             raise click.ClickException(
-                f"'{name}' is not in the rotation. Use 'rtv list-shows' to see current shows."
+                f"'{name}' is not in the pool. Use 'rtv list-shows' to see current shows."
             )
 
-    removed = config.shows.pop(found_idx)
+    removed = config.shows[found_idx]
+    # Warn if in playlists
+    membership = config.get_playlist_membership(removed.name)
+    if membership:
+        display.warning(f"'{removed.name}' is in playlists: {', '.join(membership)}")
+        if not click.confirm("Remove anyway?"):
+            display.info("Cancelled.")
+            return
+
+    config.shows.pop(found_idx)
     save_config(config, config_path)
-    display.success(f"Removed '{removed.name}' from rotation.")
+    display.success(f"Removed '{removed.name}' from pool.")
 
 
 @cli.command("list-shows")
 def list_shows() -> None:
-    """Show current rotation with episode positions."""
+    """Show all shows in the global pool."""
     config, _ = get_config_or_exit()
 
     episode_counts: dict[str, int] | None = None
     try:
         from rtv import plex_client
-
         server = plex_client.connect(config.plex)
         episode_counts = {}
         for show in config.shows:
@@ -303,11 +317,172 @@ def list_shows() -> None:
     except Exception:
         pass
 
-    display.show_shows_table(config.shows, episode_counts)
+    # Build playlist membership
+    membership: dict[str, list[str]] = {}
+    for show in config.shows:
+        membership[show.name] = config.get_playlist_membership(show.name)
+
+    display.show_shows_table(config.shows, episode_counts, membership)
+
+
+@cli.command("enable-show")
+@click.argument("name")
+def enable_show(name: str) -> None:
+    """Enable a show in the global pool."""
+    config, config_path = get_config_or_exit()
+    gs = config.get_global_show(name)
+    if gs is None:
+        raise click.ClickException(f"Show '{name}' not found in pool.")
+    gs.enabled = True
+    save_config(config, config_path)
+    display.success(f"Enabled '{gs.name}'.")
+
+
+@cli.command("disable-show")
+@click.argument("name")
+def disable_show(name: str) -> None:
+    """Disable a show in the global pool (skipped during generation)."""
+    config, config_path = get_config_or_exit()
+    gs = config.get_global_show(name)
+    if gs is None:
+        raise click.ClickException(f"Show '{name}' not found in pool.")
+    gs.enabled = False
+    save_config(config, config_path)
+    display.success(f"Disabled '{gs.name}'. It will be skipped during generation.")
 
 
 # ---------------------------------------------------------------------------
-# Phase 3: Commercial management
+# Playlist management
+# ---------------------------------------------------------------------------
+
+
+@cli.command("create-playlist")
+@click.argument("name")
+@click.option("--episodes", "-e", default=30, help="Episodes per generation (default 30)")
+@click.option("--break-style", type=click.Choice(["single", "block", "disabled"]), default="single")
+@click.option("--frequency", default=1, help="Commercial break frequency (every N episodes)")
+def create_playlist(name: str, episodes: int, break_style: str, frequency: int) -> None:
+    """Create a new playlist."""
+    config, config_path = get_config_or_exit()
+
+    if config.get_playlist(name) is not None:
+        raise click.ClickException(f"Playlist '{name}' already exists.")
+
+    breaks_enabled = break_style != "disabled"
+    new_pl = PlaylistDefinition(
+        name=name,
+        breaks=BreakConfig(
+            enabled=breaks_enabled,
+            style=break_style if breaks_enabled else "single",
+            frequency=frequency,
+        ),
+        episodes_per_generation=episodes,
+    )
+    config.playlists.append(new_pl)
+    save_config(config, config_path)
+    display.success(f"Created playlist '{name}'. Use 'rtv playlist-add {name} <show>' to add shows.")
+
+
+@cli.command("delete-playlist")
+@click.argument("name")
+def delete_playlist(name: str) -> None:
+    """Delete a playlist."""
+    config, config_path = get_config_or_exit()
+
+    pl = config.get_playlist(name)
+    if pl is None:
+        raise click.ClickException(f"Playlist '{name}' not found.")
+
+    if not click.confirm(f"Delete playlist '{pl.name}' ({len(pl.shows)} shows)?"):
+        display.info("Cancelled.")
+        return
+
+    config.playlists = [p for p in config.playlists if p.name.lower() != name.lower()]
+    if config.default_playlist.lower() == name.lower() and config.playlists:
+        config.default_playlist = config.playlists[0].name
+        display.info(f"Default playlist changed to '{config.default_playlist}'.")
+
+    save_config(config, config_path)
+    display.success(f"Deleted playlist '{pl.name}'.")
+
+
+@cli.command("list-playlists")
+def list_playlists() -> None:
+    """Show all playlists."""
+    config, _ = get_config_or_exit()
+    display.show_playlists_table(config.playlists, config.default_playlist)
+
+
+@cli.command("playlist-add")
+@click.argument("playlist_name")
+@click.argument("show_name")
+def playlist_add(playlist_name: str, show_name: str) -> None:
+    """Add a show to a playlist at S01E01."""
+    config, config_path = get_config_or_exit()
+
+    pl = config.get_playlist(playlist_name)
+    if pl is None:
+        raise click.ClickException(f"Playlist '{playlist_name}' not found.")
+
+    gs = config.get_global_show(show_name)
+    if gs is None:
+        raise click.ClickException(f"Show '{show_name}' not found in global pool. Use 'rtv add-show' first.")
+
+    # Check if already in playlist
+    for ps in pl.shows:
+        if ps.name.lower() == show_name.lower():
+            raise click.ClickException(f"'{show_name}' is already in playlist '{pl.name}'.")
+
+    pl.shows.append(PlaylistShow(name=gs.name))
+    save_config(config, config_path)
+    display.success(f"Added '{gs.name}' to playlist '{pl.name}' at S01E01.")
+
+
+@cli.command("playlist-remove")
+@click.argument("playlist_name")
+@click.argument("show_name")
+def playlist_remove(playlist_name: str, show_name: str) -> None:
+    """Remove a show from a playlist."""
+    config, config_path = get_config_or_exit()
+
+    pl = config.get_playlist(playlist_name)
+    if pl is None:
+        raise click.ClickException(f"Playlist '{playlist_name}' not found.")
+
+    name_lower = show_name.lower()
+    new_shows = []
+    removed = False
+    for ps in pl.shows:
+        if ps.name.lower() == name_lower and not removed:
+            removed = True
+        else:
+            new_shows.append(ps)
+    pl.shows = new_shows
+
+    if not removed:
+        raise click.ClickException(f"'{show_name}' is not in playlist '{pl.name}'.")
+
+    save_config(config, config_path)
+    display.success(f"Removed '{show_name}' from playlist '{pl.name}'.")
+
+
+@cli.command("set-default")
+@click.argument("name")
+def set_default(name: str) -> None:
+    """Set the default playlist."""
+    config, config_path = get_config_or_exit()
+
+    pl = config.get_playlist(name)
+    if pl is None:
+        raise click.ClickException(f"Playlist '{name}' not found.")
+
+    config.default_playlist = pl.name
+    save_config(config, config_path)
+    display.success(f"Default playlist set to '{pl.name}'.")
+
+
+# ---------------------------------------------------------------------------
+# Commercial management
 # ---------------------------------------------------------------------------
 
 
@@ -341,7 +516,6 @@ def find_commercials(category: str, max_results: int) -> None:
     commercial.save_search_results(results)
     display.show_search_results(results)
 
-    # Prompt for downloads
     selection = click.prompt(
         "\nDownload which? (e.g. 1,3,5-7 or 'all' or 'none')",
         default="none",
@@ -462,7 +636,6 @@ def add_category(name: str, search_terms: tuple[str, ...], weight: float) -> Non
     """Add a new commercial category."""
     config, config_path = get_config_or_exit()
 
-    # Check for duplicate
     for cat in config.commercials.categories:
         if cat.name.lower() == name.lower():
             raise click.ClickException(f"Category '{name}' already exists.")
@@ -488,7 +661,7 @@ def list_commercials() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Phase 4: Playlist generation
+# Playlist generation
 # ---------------------------------------------------------------------------
 
 
@@ -510,11 +683,18 @@ def generate(
     """Generate a Plex playlist with round-robin episodes and commercial breaks."""
     config, config_path = get_config_or_exit()
 
-    if not config.shows:
-        raise click.ClickException("No shows in rotation. Use 'rtv add-show' first.")
+    try:
+        playlist = config.get_playlist_or_raise(name)
+    except ValueError as e:
+        raise click.ClickException(str(e)) from e
 
-    playlist_name = name or config.playlist.default_name
-    episode_count = episodes or config.playlist.episodes_per_generation
+    if not playlist.shows:
+        raise click.ClickException(
+            f"Playlist '{playlist.name}' has no shows. "
+            "Use 'rtv playlist-add' to add shows."
+        )
+
+    episode_count = episodes or playlist.episodes_per_generation
 
     from rtv import plex_client as pc
     from rtv.playlist import generate_playlist
@@ -524,7 +704,6 @@ def generate(
     except Exception as e:
         raise click.ClickException(f"Could not connect to Plex: {e}") from e
 
-    # Rescan commercial library if requested
     if rescan:
         with Progress(
             SpinnerColumn(),
@@ -541,7 +720,7 @@ def generate(
             except Exception as e:
                 raise click.ClickException(f"Library scan failed: {e}") from e
 
-    display.info(f"Generating playlist '{playlist_name}' with up to {episode_count} episodes...")
+    display.info(f"Generating playlist '{playlist.name}' with up to {episode_count} episodes...")
     if from_start:
         display.info("Resetting all show positions to S01E01.")
 
@@ -554,19 +733,24 @@ def generate(
         transient=True,
     ) as progress:
         task = progress.add_task("Generating", total=episode_count)
+
+        def on_progress(current: int, total: int) -> None:
+            progress.update(task, completed=current)
+
         try:
-            result = generate_playlist(config, server, episode_count, from_start, progress_task=(progress, task))
+            result = generate_playlist(
+                config, playlist, server, episode_count, from_start,
+                progress_callback=on_progress,
+            )
         except ValueError as e:
             raise click.ClickException(str(e)) from e
 
     if not result.playlist_items:
         raise click.ClickException("No items generated. Check your show configuration.")
 
-    # Warn about long playlists
     if len(result.playlist_items) > 500:
         display.warning(f"Large playlist ({len(result.playlist_items)} items). This may take a moment...")
 
-    # Create the Plex playlist
     with Progress(
         SpinnerColumn(),
         TextColumn("[cyan]Creating Plex playlist...[/cyan]"),
@@ -575,47 +759,43 @@ def generate(
     ) as progress:
         progress.add_task("create", total=None)
         try:
-            pc.create_or_update_playlist(server, playlist_name, result.playlist_items)
+            pc.create_or_update_playlist(server, playlist.name, result.playlist_items)
         except Exception as e:
             raise click.ClickException(f"Failed to create playlist: {e}") from e
 
-    # Record history
     entry = HistoryEntry(
         timestamp=datetime.now().strftime("%Y-%m-%d %H:%M"),
-        playlist_name=playlist_name,
+        playlist_name=playlist.name,
         episode_count=sum(result.episodes_by_show.values()),
         shows=list(result.episodes_by_show.keys()),
         runtime_secs=result.total_runtime_secs,
     )
     config.history.append(entry)
-    # Keep only last 5
     config.history = config.history[-5:]
 
-    # Save updated positions + history
     save_config(config, config_path)
 
-    # Display summary
     display.show_generation_summary(
-        playlist_name=playlist_name,
+        playlist_name=playlist.name,
         total_items=len(result.playlist_items),
         episodes_by_show=result.episodes_by_show,
         show_positions=result.show_positions,
         total_runtime_secs=result.total_runtime_secs,
         commercial_block_count=result.commercial_block_count,
         commercial_total_secs=result.commercial_total_secs,
+        break_style=playlist.breaks.style if playlist.breaks.enabled else "disabled",
     )
 
     if result.dropped_shows:
         display.warning(f"Shows exhausted: {', '.join(result.dropped_shows)}")
 
-    # Export if requested
     if do_export:
         out = Path(export_path) if export_path else Path("playlist_export.csv")
-        _export_playlist(server, playlist_name, out)
+        _export_playlist(server, playlist.name, out)
 
 
 # ---------------------------------------------------------------------------
-# Phase 5B: Playlist export
+# Playlist export
 # ---------------------------------------------------------------------------
 
 
@@ -625,7 +805,7 @@ def _export_playlist(
     output_path: Path,
     fmt: str = "csv",
 ) -> None:
-    """Export a Plex playlist to CSV or JSON. Used by both ``export`` and ``generate --export``."""
+    """Export a Plex playlist to CSV or JSON."""
     from pathlib import PurePosixPath, PureWindowsPath
 
     with Progress(
@@ -636,8 +816,8 @@ def _export_playlist(
     ) as progress:
         progress.add_task("read", total=None)
         try:
-            playlist = server.playlist(playlist_name)  # type: ignore[union-attr]
-            items = playlist.items()
+            plex_playlist = server.playlist(playlist_name)  # type: ignore[union-attr]
+            items = plex_playlist.items()
         except Exception as e:
             raise click.ClickException(f"Could not read playlist '{playlist_name}': {e}") from e
 
@@ -704,12 +884,12 @@ def _export_playlist(
 @cli.command()
 @click.option("--format", "fmt", type=click.Choice(["csv", "json"]), default="csv", help="Export format")
 @click.option("--output", "-o", "output_file", default=None, help="Output file path")
-@click.option("--name", "-n", default=None, help="Playlist name (default: 'Real TV')")
+@click.option("--name", "-n", default=None, help="Playlist name (default: default playlist)")
 def export(fmt: str, output_file: str | None, name: str | None) -> None:
     """Export the current Plex playlist to CSV or JSON for review."""
     config, _ = get_config_or_exit()
 
-    playlist_name = name or config.playlist.default_name
+    playlist_name = name or config.default_playlist
 
     from rtv import plex_client as pc
 
@@ -726,7 +906,7 @@ def export(fmt: str, output_file: str | None, name: str | None) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Phase 5C: Quality of Life commands
+# Quality of life commands
 # ---------------------------------------------------------------------------
 
 
@@ -738,11 +918,17 @@ def preview(name: str | None, episodes: int | None, from_start: bool) -> None:
     """Dry-run: show what a playlist would look like without creating it."""
     config, _ = get_config_or_exit()
 
-    if not config.shows:
-        raise click.ClickException("No shows in rotation. Use 'rtv add-show' first.")
+    try:
+        playlist = config.get_playlist_or_raise(name)
+    except ValueError as e:
+        raise click.ClickException(str(e)) from e
 
-    playlist_name = name or config.playlist.default_name
-    episode_count = episodes or config.playlist.episodes_per_generation
+    if not playlist.shows:
+        raise click.ClickException(
+            f"Playlist '{playlist.name}' has no shows. Use 'rtv playlist-add' first."
+        )
+
+    episode_count = episodes or playlist.episodes_per_generation
 
     from rtv import plex_client as pc
     from rtv.playlist import generate_playlist
@@ -752,10 +938,9 @@ def preview(name: str | None, episodes: int | None, from_start: bool) -> None:
     except Exception as e:
         raise click.ClickException(f"Could not connect to Plex: {e}") from e
 
-    # Generate but do NOT save or create playlist
-    # Work on a copy of config so positions aren't modified
-    import copy
+    # Work on a deep copy so positions aren't modified
     preview_config = copy.deepcopy(config)
+    preview_playlist = preview_config.get_playlist_or_raise(name)
 
     with Progress(
         SpinnerColumn(),
@@ -765,14 +950,15 @@ def preview(name: str | None, episodes: int | None, from_start: bool) -> None:
     ) as progress:
         progress.add_task("preview", total=None)
         try:
-            result = generate_playlist(preview_config, server, episode_count, from_start)
+            result = generate_playlist(
+                preview_config, preview_playlist, server, episode_count, from_start
+            )
         except ValueError as e:
             raise click.ClickException(str(e)) from e
 
     if not result.playlist_items:
         raise click.ClickException("No items would be generated.")
 
-    # Build display items
     preview_items: list[dict[str, str]] = []
     for item in result.playlist_items:
         duration_secs = 0.0
@@ -781,7 +967,6 @@ def preview(name: str | None, episodes: int | None, from_start: bool) -> None:
         mins, secs = divmod(int(duration_secs), 60)
         dur_str = f"{mins}:{secs:02d}" if duration_secs > 0 else "?"
 
-        # Determine if it's an episode or commercial
         title = getattr(item, "title", "Unknown")
         grandparent = getattr(item, "grandparentTitle", None)
         if grandparent:
@@ -801,7 +986,7 @@ def preview(name: str | None, episodes: int | None, from_start: bool) -> None:
 
     show_years = {s.name: s.year for s in preview_config.shows}
     display.show_preview(
-        playlist_name=playlist_name,
+        playlist_name=preview_playlist.name,
         items=preview_items,
         episodes_by_show=result.episodes_by_show,
         show_positions=result.show_positions,
@@ -819,18 +1004,15 @@ def doctor() -> None:
 
     checks: list[tuple[str, bool, str]] = []
 
-    # 1. Config file valid
     checks.append(("Config file", True, str(config_path)))
+    checks.append(("Config version", True, f"v{config.config_version}"))
 
-    # 2. Plex URL format
     url_ok = config.plex.url.startswith(("http://", "https://"))
     checks.append(("Plex URL format", url_ok, config.plex.url))
 
-    # 3. Plex token set
     token_ok = bool(config.plex.token)
     checks.append(("Plex token", token_ok, "Set" if token_ok else "Empty — run 'rtv init'"))
 
-    # 4. Plex connection
     server = None
     try:
         from rtv import plex_client
@@ -846,7 +1028,6 @@ def doctor() -> None:
     except Exception as e:
         checks.append(("Plex connection", False, str(e)))
 
-    # 5. Libraries exist
     if server:
         for lib_name in config.plex.tv_libraries:
             try:
@@ -855,19 +1036,14 @@ def doctor() -> None:
             except Exception:
                 checks.append((f"Library: {lib_name}", False, "Not found in Plex"))
 
-    # 6. Shows found
-    if server:
-        for show in config.shows:
-            try:
-                show_obj = plex_client.get_show(server, show.name, show.library)
-                ep_count = len(show_obj.episodes())
-                # Check position integrity
-                pos_str = f"S{show.current_season:02d}E{show.current_episode:02d} ({ep_count} total episodes)"
-                checks.append((f"Show: {show.name}", True, pos_str))
-            except Exception:
-                checks.append((f"Show: {show.name}", False, f"Not found in library '{show.library}'"))
+    # Playlists
+    checks.append(("Playlists", len(config.playlists) > 0, f"{len(config.playlists)} defined"))
 
-    # 7. Commercial library path
+    # Shows in pool
+    enabled_count = sum(1 for s in config.shows if s.enabled)
+    checks.append(("Global shows", len(config.shows) > 0, f"{len(config.shows)} total, {enabled_count} enabled"))
+
+    # Commercial library path
     comm_path = Path(config.commercials.library_path)
     if config.commercials.library_path:
         if comm_path.exists():
@@ -878,20 +1054,17 @@ def doctor() -> None:
     else:
         checks.append(("Commercial path", False, "Not configured"))
 
-    # 8. Commercial library in Plex
     if server:
         commercials = plex_client.get_commercials(server, config.commercials.library_name)
         if commercials:
-            checks.append((f"Plex commercial library", True, f"'{config.commercials.library_name}' has {len(commercials)} items"))
+            checks.append(("Plex commercial library", True, f"'{config.commercials.library_name}' has {len(commercials)} items"))
         else:
-            checks.append((f"Plex commercial library", False, f"'{config.commercials.library_name}' not found or empty"))
+            checks.append(("Plex commercial library", False, f"'{config.commercials.library_name}' not found or empty"))
 
-    # 9. yt-dlp available
     ytdlp_path = shutil.which("yt-dlp")
     if ytdlp_path:
         checks.append(("yt-dlp", True, ytdlp_path))
     else:
-        # Check if importable even without CLI
         try:
             import yt_dlp
             checks.append(("yt-dlp", True, f"Python module v{yt_dlp.version.__version__}"))
@@ -906,6 +1079,29 @@ def history() -> None:
     """Show last 5 generated playlists."""
     config, _ = get_config_or_exit()
     display.show_history(config.history)
+
+
+# ---------------------------------------------------------------------------
+# GUI launchers
+# ---------------------------------------------------------------------------
+
+
+@cli.command()
+@click.option("--host", default="0.0.0.0", help="Host to bind to")
+@click.option("--port", "-p", default=8080, help="Port to bind to")
+@click.option("--no-open", is_flag=True, help="Don't auto-open browser")
+def web(host: str, port: int, no_open: bool) -> None:
+    """Launch the web UI (FastAPI + htmx)."""
+    from rtv.web.app import run_server
+    run_server(host=host, port=port, open_browser=not no_open)
+
+
+@cli.command()
+def tui() -> None:
+    """Launch the terminal UI (Textual)."""
+    from rtv.tui.app import PlexRealTVApp
+    app = PlexRealTVApp()
+    app.run()
 
 
 if __name__ == "__main__":

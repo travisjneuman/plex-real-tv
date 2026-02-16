@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "plex-real-tv"
-version = "0.1.0"
+version = "0.2.0"
 description = "Generate Plex playlists that simulate real TV with round-robin episodes and vintage commercial breaks"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -17,12 +17,20 @@ dependencies = [
     "pydantic>=2.0",
     "rapidfuzz>=3.0",
     "rich>=13.0",
+    "fastapi>=0.109",
+    "uvicorn[standard]>=0.27",
+    "jinja2>=3.1",
+    "sse-starlette>=1.8",
+    "textual>=0.75.0",
+    "paramiko>=3.4",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest>=7.0",
     "pytest-cov>=4.0",
+    "httpx>=0.25",
+    "pytest-asyncio>=0.23",
 ]
 
 [project.scripts]
@@ -30,6 +38,9 @@ rtv = "rtv.cli:cli"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+rtv = ["web/templates/*.html", "web/static/*.css", "tui/*.tcss"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

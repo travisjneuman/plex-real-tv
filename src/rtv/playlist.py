@@ -5,11 +5,19 @@ from __future__ import annotations
 import random
 from collections import deque
 from dataclasses import dataclass, field
+from typing import Callable
 
 from plexapi.server import PlexServer
 from plexapi.video import Video, Episode
 
-from rtv.config import RTVConfig, ShowConfig, CommercialConfig
+from rtv.config import (
+    RTVConfig,
+    GlobalShow,
+    PlaylistShow,
+    PlaylistDefinition,
+    BreakConfig,
+    CommercialConfig,
+)
 from rtv import plex_client, display
 
 
@@ -30,7 +38,10 @@ class GenerationResult:
 class ShowState:
     """Mutable state tracking for a show during generation."""
 
-    config: ShowConfig
+    name: str
+    library: str
+    year: int | None
+    playlist_show: PlaylistShow
     plex_show: object  # plexapi.video.Show
     current_season: int
     current_episode: int
@@ -82,7 +93,6 @@ def build_commercial_block(
     """Build a commercial block of random clips meeting the target duration.
 
     Returns (list of commercial items, total duration in seconds).
-    Kept for backwards compatibility but no longer used by generate_playlist.
     """
     if not commercials:
         return [], 0.0
@@ -116,8 +126,57 @@ def build_commercial_block(
         chosen = random.choices(clips, weights=weights, k=1)[0]
         clip_duration = _get_duration_secs(chosen)
         if clip_duration <= 0:
-            clip_duration = 30.0  # Default 30s for unknown duration clips
+            clip_duration = 30.0
 
+        block.append(chosen)
+        block_duration += clip_duration
+
+    return block, block_duration
+
+
+def build_commercial_block_for_playlist(
+    commercials: list[Video],
+    break_config: BreakConfig,
+    commercial_config: CommercialConfig,
+    categories_by_path: dict[str, str],
+) -> tuple[list[Video], float]:
+    """Build a commercial block using playlist-specific break settings.
+
+    Uses break_config.block_duration for the target range.
+    Returns (list of commercial items, total duration in seconds).
+    """
+    if not commercials:
+        return [], 0.0
+
+    target_duration = random.uniform(
+        break_config.block_duration.min,
+        break_config.block_duration.max,
+    )
+
+    category_weights: dict[str, float] = {}
+    for cat in commercial_config.categories:
+        category_weights[cat.name.lower()] = cat.weight
+
+    weighted_pool: list[tuple[Video, float]] = []
+    for clip in commercials:
+        clip_category = _get_clip_category(clip, categories_by_path)
+        weight = category_weights.get(clip_category.lower(), 1.0)
+        weighted_pool.append((clip, weight))
+
+    if not weighted_pool:
+        return [], 0.0
+
+    clips = [item[0] for item in weighted_pool]
+    weights = [item[1] for item in weighted_pool]
+
+    block: list[Video] = []
+    block_duration = 0.0
+
+    while block_duration < target_duration and clips:
+        chosen = random.choices(clips, weights=weights, k=1)[0]
+        clip_duration = _get_duration_secs(chosen)
+        if clip_duration <= 0:
+            clip_duration = 30.0
         block.append(chosen)
         block_duration += clip_duration
 
@@ -130,7 +189,6 @@ def _get_clip_category(clip: Video, categories_by_path: dict[str, str]) -> str:
         from pathlib import PurePosixPath, PureWindowsPath
 
         location = clip.locations[0]
-        # Try to extract parent folder name as category
         for path_class in (PureWindowsPath, PurePosixPath):
             try:
                 p = path_class(location)
@@ -149,75 +207,99 @@ def _get_duration_secs(item: Video | Episode) -> float:
 
 def generate_playlist(
     config: RTVConfig,
+    playlist: PlaylistDefinition,
     server: PlexServer,
-    episode_count: int,
-    from_start: bool,
-    progress_task: tuple[object, object] | None = None,
+    episode_count: int | None = None,
+    from_start: bool = False,
+    progress_callback: Callable[[int, int], None] | None = None,
 ) -> GenerationResult:
-    """Generate round-robin playlist with commercial blocks.
+    """Generate round-robin playlist with commercial breaks.
 
     Args:
-        config: The full RTV configuration.
+        config: The full RTV configuration (for global shows and commercial settings).
+        playlist: The specific playlist definition to generate.
         server: Connected PlexServer instance.
-        episode_count: Maximum number of episodes to include.
+        episode_count: Maximum number of episodes. None = use playlist default.
         from_start: If True, reset all show positions to S01E01.
-        progress_task: Optional (Progress, task_id) tuple for progress bar updates.
+        progress_callback: Optional callback(current, total) for progress updates.
 
     Returns:
         GenerationResult with all playlist items and statistics.
     """
-    if not config.shows:
-        raise ValueError("No shows in rotation. Use 'rtv add-show' first.")
+    if not playlist.shows:
+        raise ValueError(
+            f"Playlist '{playlist.name}' has no shows. "
+            "Use 'rtv playlist-add' to add shows."
+        )
+
+    ep_count = episode_count or playlist.episodes_per_generation
 
     # Reset positions if requested
     if from_start:
-        for show in config.shows:
-            show.current_season = 1
-            show.current_episode = 1
+        for ps in playlist.shows:
+            ps.current_season = 1
+            ps.current_episode = 1
 
-    # Initialize show states
+    # Initialize show states from playlist shows + global show metadata
     show_states: list[ShowState] = []
-    for show_config in config.shows:
+    for ps in playlist.shows:
+        global_show = config.get_global_show(ps.name)
+        if global_show is None:
+            display.warning(f"'{ps.name}' not found in global shows, skipping.")
+            continue
+        if not global_show.enabled:
+            continue
+
         try:
             plex_show = plex_client.get_show(
-                server, show_config.name, show_config.library
+                server, ps.name, global_show.library
             )
             show_states.append(ShowState(
-                config=show_config,
+                name=ps.name,
+                library=global_show.library,
+                year=global_show.year,
+                playlist_show=ps,
                 plex_show=plex_show,
-                current_season=show_config.current_season,
-                current_episode=show_config.current_episode,
+                current_season=ps.current_season,
+                current_episode=ps.current_episode,
             ))
         except Exception as e:
-            display.warning(f"Could not find '{show_config.name}' in Plex: {e}")
+            display.warning(f"Could not find '{ps.name}' in Plex: {e}")
 
     if not show_states:
-        raise ValueError("None of the configured shows could be found in Plex.")
+        raise ValueError("None of the playlist's shows could be found in Plex.")
 
     # Backfill missing years from Plex metadata
     for state in show_states:
-        if state.config.year is None:
+        if state.year is None:
             plex_year = getattr(state.plex_show, "year", None)
             if plex_year is not None:
-                state.config.year = int(plex_year)
+                state.year = int(plex_year)
+                # Also update global show
+                gs = config.get_global_show(state.name)
+                if gs is not None:
+                    gs.year = state.year
 
-    # Sort show states according to playlist.sort_by
-    sort_by = config.playlist.sort_by
+    # Sort show states
+    sort_by = playlist.sort_by
     if sort_by == "premiere_year":
-        show_states.sort(key=lambda s: (s.config.year is None, s.config.year or 0))
+        show_states.sort(key=lambda s: (s.year is None, s.year or 0))
     elif sort_by == "premiere_year_desc":
-        show_states.sort(key=lambda s: (s.config.year is None, -(s.config.year or 0)))
+        show_states.sort(key=lambda s: (s.year is None, -(s.year or 0)))
     elif sort_by == "alphabetical":
-        show_states.sort(key=lambda s: s.config.name.lower())
+        show_states.sort(key=lambda s: s.name.lower())
     # "config_order" — no sorting needed
 
     # Load commercials
-    commercials = plex_client.get_commercials(server, config.commercials.library_name)
-    if not commercials:
-        display.warning("No commercials found. Generating playlist without commercial breaks.")
+    breaks = playlist.breaks
+    commercials: list[Video] = []
+    if breaks.enabled:
+        commercials = plex_client.get_commercials(server, config.commercials.library_name)
+        if not commercials:
+            display.warning("No commercials found. Generating playlist without commercial breaks.")
 
-    # No-repeat tracking: deque with maxlen = commercial_min_gap
-    commercial_history: deque[int] = deque(maxlen=config.playlist.commercial_min_gap)
+    # No-repeat tracking for single-style commercials
+    commercial_history: deque[int] = deque(maxlen=breaks.min_gap)
 
     # Build the playlist
     playlist_items: list[Video | Episode] = []
@@ -230,38 +312,30 @@ def generate_playlist(
 
     rotation_idx = 0
 
-    while episodes_added < episode_count:
-        # Filter out exhausted shows
+    while episodes_added < ep_count:
         active_states = [s for s in show_states if not s.exhausted]
         if not active_states:
             display.warning("All shows exhausted.")
             break
 
-        # Pick next show in round-robin
         state = active_states[rotation_idx % len(active_states)]
         rotation_idx += 1
 
-        # Get the next episode
         episode = _get_next_episode(state)
         if episode is None:
-            # Show is exhausted
             state.exhausted = True
-            dropped_shows.append(state.config.name)
-            display.warning(f"'{state.config.name}' has no more episodes.")
-            # Don't increment rotation_idx extra — the exhausted show
-            # is filtered out next iteration
-            rotation_idx -= 1  # Adjust so we don't skip the next show
+            dropped_shows.append(state.name)
+            display.warning(f"'{state.name}' has no more episodes.")
+            rotation_idx -= 1
             continue
 
-        # Add the episode
         playlist_items.append(episode)
         episodes_added += 1
         state.episodes_added += 1
 
-        # Update progress bar if provided
-        if progress_task is not None:
-            progress, task_id = progress_task
-            progress.update(task_id, completed=episodes_added)  # type: ignore[union-attr]
+        if progress_callback is not None:
+            progress_callback(episodes_added, ep_count)
+
         ep_duration = _get_duration_secs(episode)
         total_runtime_secs += ep_duration
         episodes_since_last_commercial += 1
@@ -269,33 +343,44 @@ def generate_playlist(
         # Advance position
         state.current_episode += 1
 
-        # Insert single commercial if frequency met
+        # Insert commercial(s) if frequency met and breaks enabled
         if (
             commercials
-            and episodes_since_last_commercial >= config.playlist.commercial_frequency
-            and episodes_added < episode_count  # Don't add commercials after last episode
+            and breaks.enabled
+            and episodes_since_last_commercial >= breaks.frequency
+            and episodes_added < ep_count
         ):
-            clip, clip_duration = pick_single_commercial(
-                commercials, commercial_history, config.playlist.commercial_min_gap
-            )
-            if clip is not None:
-                playlist_items.append(clip)
-                commercial_block_count += 1
-                commercial_total_secs += clip_duration
-                total_runtime_secs += clip_duration
+            if breaks.style == "single":
+                clip, clip_duration = pick_single_commercial(
+                    commercials, commercial_history, breaks.min_gap
+                )
+                if clip is not None:
+                    playlist_items.append(clip)
+                    commercial_block_count += 1
+                    commercial_total_secs += clip_duration
+                    total_runtime_secs += clip_duration
+            elif breaks.style == "block":
+                block_items, block_duration = build_commercial_block_for_playlist(
+                    commercials, breaks, config.commercials, {}
+                )
+                if block_items:
+                    playlist_items.extend(block_items)
+                    commercial_block_count += 1
+                    commercial_total_secs += block_duration
+                    total_runtime_secs += block_duration
             episodes_since_last_commercial = 0
 
-    # Save updated positions back to config
+    # Save updated positions back to playlist shows
     for state in show_states:
-        state.config.current_season = state.current_season
-        state.config.current_episode = state.current_episode
+        state.playlist_show.current_season = state.current_season
+        state.playlist_show.current_episode = state.current_episode
 
     # Build result
     episodes_by_show: dict[str, int] = {}
     show_positions: dict[str, str] = {}
     for state in show_states:
-        episodes_by_show[state.config.name] = state.episodes_added
-        show_positions[state.config.name] = (
+        episodes_by_show[state.name] = state.episodes_added
+        show_positions[state.name] = (
             f"S{state.current_season:02d}E{state.current_episode:02d}"
         )
 
@@ -315,7 +400,6 @@ def _get_next_episode(state: ShowState) -> Episode | None:
 
     Returns None if the show is completely exhausted.
     """
-    # Try current position
     episode = plex_client.get_episode(
         state.plex_show, state.current_season, state.current_episode  # type: ignore[arg-type]
     )
@@ -327,13 +411,11 @@ def _get_next_episode(state: ShowState) -> Episode | None:
         state.plex_show, state.current_season  # type: ignore[arg-type]
     )
     if next_season is None:
-        # No more seasons
         return None
 
     state.current_season = next_season
     state.current_episode = 1
 
-    # Try first episode of next season
     episode = plex_client.get_episode(
         state.plex_show, state.current_season, state.current_episode  # type: ignore[arg-type]
     )

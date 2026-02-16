@@ -129,6 +129,27 @@ def rescan_library(server: PlexServer, library_name: str, timeout: int = 120) ->
     )
 
 
+def discover_servers() -> list[dict[str, str | int]]:
+    """Find Plex servers on local network using GDM protocol.
+
+    Returns list of dicts with: name, host, port.
+    """
+    try:
+        from plexapi.gdm import GDM
+        gdm = GDM()
+        gdm.scan()
+        results = []
+        for entry in gdm.entries:
+            results.append({
+                "name": entry.get("Name", "Unknown"),
+                "host": entry.get("Host", ""),
+                "port": int(entry.get("Port", 32400)),
+            })
+        return results
+    except Exception:
+        return []
+
+
 PLAYLIST_CHUNK_SIZE = 200
 
 

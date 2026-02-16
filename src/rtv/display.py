@@ -7,7 +7,7 @@ from rich.table import Table
 from rich.panel import Panel
 from rich.text import Text
 
-from rtv.config import ShowConfig, CommercialCategory, HistoryEntry
+from rtv.config import GlobalShow, PlaylistDefinition, CommercialCategory, HistoryEntry
 
 console = Console()
 
@@ -39,6 +39,7 @@ def show_status(
     show_count: int,
     commercial_count: int,
     commercial_duration_total: float,
+    playlist_count: int = 0,
 ) -> None:
     """Display the connection status and inventory summary."""
     table = Table(title="RTV Status", show_header=False, border_style="cyan")
@@ -48,33 +49,112 @@ def show_status(
     status_text = "[green]Connected[/green]" if connected else "[red]Disconnected[/red]"
     table.add_row("Plex Server", f"{plex_url} ({status_text})")
     table.add_row("Libraries", ", ".join(libraries) if libraries else "[dim]None configured[/dim]")
-    table.add_row("Shows in Rotation", str(show_count))
+    table.add_row("Shows in Pool", str(show_count))
+    table.add_row("Playlists", str(playlist_count))
     table.add_row("Commercials", f"{commercial_count} clips ({commercial_duration_total:.0f}s total)")
 
     console.print(table)
 
 
-def show_shows_table(shows: list[ShowConfig], episode_counts: dict[str, int] | None = None) -> None:
-    """Display a table of shows in the rotation."""
+def show_shows_table(
+    shows: list[GlobalShow],
+    episode_counts: dict[str, int] | None = None,
+    playlist_membership: dict[str, list[str]] | None = None,
+) -> None:
+    """Display a table of shows in the global pool."""
     if not shows:
-        warning("No shows in rotation. Use 'rtv add-show' to add one.")
+        warning("No shows in pool. Use 'rtv add-show' to add one.")
         return
 
-    table = Table(title="Show Rotation", border_style="cyan")
+    table = Table(title="Show Pool", border_style="cyan")
     table.add_column("#", style="dim", width=3)
     table.add_column("Show", style="bold")
     table.add_column("Year", justify="center", width=6)
     table.add_column("Library")
-    table.add_column("Position", justify="center")
+    table.add_column("Enabled", justify="center", width=8)
+    table.add_column("Playlists")
     table.add_column("Total Episodes", justify="center")
 
     for i, show in enumerate(shows, 1):
-        pos = f"S{show.current_season:02d}E{show.current_episode:02d}"
         total = str(episode_counts.get(show.name, "?")) if episode_counts else "?"
         year_str = str(show.year) if show.year else "-"
-        table.add_row(str(i), show.name, year_str, show.library, pos, total)
+        enabled_str = "[green]Yes[/green]" if show.enabled else "[dim]No[/dim]"
+        playlists_str = ""
+        if playlist_membership:
+            pls = playlist_membership.get(show.name, [])
+            playlists_str = ", ".join(pls) if pls else "[dim]—[/dim]"
+        table.add_row(str(i), show.name, year_str, show.library, enabled_str, playlists_str, total)
 
     console.print(table)
+
+
+def show_playlists_table(
+    playlists: list[PlaylistDefinition],
+    default_name: str,
+) -> None:
+    """Display a summary table of all playlists."""
+    if not playlists:
+        warning("No playlists. Use 'rtv create-playlist' to create one.")
+        return
+
+    table = Table(title="Playlists", border_style="cyan")
+    table.add_column("#", style="dim", width=3)
+    table.add_column("Name", style="bold")
+    table.add_column("Shows", justify="right")
+    table.add_column("Break Style", justify="center")
+    table.add_column("Episodes/Gen", justify="right")
+    table.add_column("Sort By")
+    table.add_column("Default", justify="center", width=8)
+
+    for i, pl in enumerate(playlists, 1):
+        is_default = "[green]★[/green]" if pl.name == default_name else ""
+        break_style = pl.breaks.style if pl.breaks.enabled else "disabled"
+        table.add_row(
+            str(i),
+            pl.name,
+            str(len(pl.shows)),
+            break_style,
+            str(pl.episodes_per_generation),
+            pl.sort_by,
+            is_default,
+        )
+
+    console.print(table)
+
+
+def show_playlist_detail(
+    playlist: PlaylistDefinition,
+    global_shows: list[GlobalShow],
+) -> None:
+    """Display detailed view of a single playlist."""
+    table = Table(title=f"Playlist: {playlist.name}", border_style="cyan")
+    table.add_column("#", style="dim", width=3)
+    table.add_column("Show", style="bold")
+    table.add_column("Position", justify="center")
+    table.add_column("Enabled", justify="center", width=8)
+
+    # Build lookup for global show enabled status
+    enabled_map = {gs.name.lower(): gs.enabled for gs in global_shows}
+
+    for i, ps in enumerate(playlist.shows, 1):
+        pos = f"S{ps.current_season:02d}E{ps.current_episode:02d}"
+        enabled = enabled_map.get(ps.name.lower(), True)
+        enabled_str = "[green]Yes[/green]" if enabled else "[dim]No[/dim]"
+        table.add_row(str(i), ps.name, pos, enabled_str)
+
+    console.print(table)
+
+    # Break config
+    breaks = playlist.breaks
+    info(f"Break style: {breaks.style if breaks.enabled else 'disabled'}")
+    if breaks.enabled:
+        info(f"  Frequency: every {breaks.frequency} episode(s)")
+        if breaks.style == "single":
+            info(f"  Min gap: {breaks.min_gap}")
+        elif breaks.style == "block":
+            info(f"  Block duration: {breaks.block_duration.min}-{breaks.block_duration.max}s")
+    info(f"Episodes per generation: {playlist.episodes_per_generation}")
+    info(f"Sort by: {playlist.sort_by}")
 
 
 def show_search_results(
@@ -164,6 +244,7 @@ def show_generation_summary(
     total_runtime_secs: float,
     commercial_block_count: int,
     commercial_total_secs: float,
+    break_style: str = "single",
 ) -> None:
     """Display the playlist generation summary."""
     table = Table(title=f"Playlist: {playlist_name}", border_style="green")
@@ -184,7 +265,7 @@ def show_generation_summary(
 
     info(f"Total items: {total_items}")
     info(f"Estimated runtime: {total_hours}h {remaining_mins}m")
-    info(f"Commercial blocks: {commercial_block_count} ({comm_mins} min)")
+    info(f"Commercial blocks: {commercial_block_count} ({comm_mins} min, style: {break_style})")
     success(f"\nPlaylist ready! Open Plex and play '{playlist_name}'")
 
 
@@ -239,10 +320,7 @@ def show_preview(
 
 
 def show_doctor_results(checks: list[tuple[str, bool, str]]) -> None:
-    """Display diagnostic check results.
-
-    Each check is (name, passed, detail_message).
-    """
+    """Display diagnostic check results."""
     table = Table(title="RTV Doctor", border_style="cyan")
     table.add_column("Check", style="bold")
     table.add_column("Status", justify="center", width=8)

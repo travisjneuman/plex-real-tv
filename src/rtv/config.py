@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import shutil
 from pathlib import Path
 
 import yaml
@@ -34,6 +35,7 @@ class PlexConfig(BaseModel):
     url: str = "http://localhost:32400"
     token: str = ""
     tv_libraries: list[str] = Field(default_factory=lambda: ["TV Shows"])
+    tv_show_paths: list[str] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def validate_url(self) -> PlexConfig:
@@ -42,14 +44,68 @@ class PlexConfig(BaseModel):
         return self
 
 
-class ShowConfig(BaseModel):
-    """A show in the rotation with its current playback position."""
+class GlobalShow(BaseModel):
+    """A show known to the system (global pool)."""
 
     name: str
     library: str = "TV Shows"
+    year: int | None = None
+    enabled: bool = True
+
+
+class PlaylistShow(BaseModel):
+    """A show's state within a specific playlist."""
+
+    name: str
     current_season: int = Field(default=1, ge=1)
     current_episode: int = Field(default=1, ge=1)
-    year: int | None = None
+
+
+class BreakConfig(BaseModel):
+    """Per-playlist commercial break settings."""
+
+    enabled: bool = True
+    style: str = "single"
+    frequency: int = Field(default=1, ge=1)
+    min_gap: int = Field(default=50, ge=1)
+    block_duration: BlockDuration = Field(default_factory=BlockDuration)
+
+    @model_validator(mode="after")
+    def validate_style(self) -> BreakConfig:
+        valid = ("single", "block", "disabled")
+        if self.style not in valid:
+            raise ValueError(f"break style must be one of {valid}, got: '{self.style}'")
+        return self
+
+
+VALID_SORT_VALUES = ("premiere_year", "premiere_year_desc", "alphabetical", "config_order")
+
+
+class PlaylistDefinition(BaseModel):
+    """A named playlist with its own settings."""
+
+    name: str
+    shows: list[PlaylistShow] = Field(default_factory=list)
+    breaks: BreakConfig = Field(default_factory=BreakConfig)
+    episodes_per_generation: int = Field(default=30, ge=1)
+    sort_by: str = "premiere_year"
+
+    @model_validator(mode="after")
+    def validate_sort_by(self) -> PlaylistDefinition:
+        if self.sort_by not in VALID_SORT_VALUES:
+            raise ValueError(f"sort_by must be one of {VALID_SORT_VALUES}, got: '{self.sort_by}'")
+        return self
+
+
+class SSHConfig(BaseModel):
+    """Optional SSH connection for remote Plex server file management."""
+
+    enabled: bool = False
+    host: str = ""
+    port: int = 22
+    username: str = ""
+    key_path: str = ""
+    remote_commercial_path: str = ""
 
 
 class CommercialCategory(BaseModel):
@@ -80,23 +136,6 @@ class CommercialConfig(BaseModel):
         return self
 
 
-class PlaylistConfig(BaseModel):
-    """Playlist generation settings."""
-
-    default_name: str = "Real TV"
-    episodes_per_generation: int = Field(default=30, ge=1)
-    commercial_frequency: int = Field(default=1, ge=1)
-    commercial_min_gap: int = Field(default=50, ge=1)
-    sort_by: str = "premiere_year"
-
-    @model_validator(mode="after")
-    def validate_sort_by(self) -> PlaylistConfig:
-        valid = ("premiere_year", "premiere_year_desc", "alphabetical", "config_order")
-        if self.sort_by not in valid:
-            raise ValueError(f"sort_by must be one of {valid}, got: '{self.sort_by}'")
-        return self
-
-
 class HistoryEntry(BaseModel):
     """A record of a generated playlist."""
 
@@ -108,12 +147,15 @@ class HistoryEntry(BaseModel):
 
 
 class RTVConfig(BaseModel):
-    """Root configuration model for plex-real-tv."""
+    """Root configuration model for plex-real-tv v2."""
 
+    config_version: int = 2
     plex: PlexConfig = Field(default_factory=PlexConfig)
-    shows: list[ShowConfig] = Field(default_factory=list)
+    shows: list[GlobalShow] = Field(default_factory=list)
     commercials: CommercialConfig = Field(default_factory=CommercialConfig)
-    playlist: PlaylistConfig = Field(default_factory=PlaylistConfig)
+    ssh: SSHConfig = Field(default_factory=SSHConfig)
+    playlists: list[PlaylistDefinition] = Field(default_factory=list)
+    default_playlist: str = "Real TV"
     history: list[HistoryEntry] = Field(default_factory=list)
 
     @model_validator(mode="after")
@@ -125,6 +167,74 @@ class RTVConfig(BaseModel):
                 if n in seen:
                     raise ValueError(f"Duplicate show name: '{n}'")
                 seen.add(n)
+        return self
+
+    def get_playlist(self, name: str | None = None) -> PlaylistDefinition | None:
+        """Look up a playlist by name. Defaults to default_playlist."""
+        target = name or self.default_playlist
+        for pl in self.playlists:
+            if pl.name.lower() == target.lower():
+                return pl
+        return None
+
+    def get_playlist_or_raise(self, name: str | None = None) -> PlaylistDefinition:
+        """Look up a playlist by name, raising ValueError if not found."""
+        pl = self.get_playlist(name)
+        if pl is None:
+            target = name or self.default_playlist
+            available = [p.name for p in self.playlists]
+            raise ValueError(
+                f"Playlist '{target}' not found. "
+                f"Available: {available or 'none — use rtv create-playlist'}"
+            )
+        return pl
+
+    def get_global_show(self, name: str) -> GlobalShow | None:
+        """Look up a global show by name (case-insensitive)."""
+        for s in self.shows:
+            if s.name.lower() == name.lower():
+                return s
+        return None
+
+    def get_playlist_membership(self, show_name: str) -> list[str]:
+        """Return names of playlists that include a given show."""
+        result = []
+        for pl in self.playlists:
+            for ps in pl.shows:
+                if ps.name.lower() == show_name.lower():
+                    result.append(pl.name)
+                    break
+        return result
+
+
+# ---------------------------------------------------------------------------
+# Legacy v1 models (kept for migration only)
+# ---------------------------------------------------------------------------
+
+
+class ShowConfig(BaseModel):
+    """LEGACY v1: A show in the rotation with its current playback position."""
+
+    name: str
+    library: str = "TV Shows"
+    current_season: int = Field(default=1, ge=1)
+    current_episode: int = Field(default=1, ge=1)
+    year: int | None = None
+
+
+class PlaylistConfig(BaseModel):
+    """LEGACY v1: Playlist generation settings."""
+
+    default_name: str = "Real TV"
+    episodes_per_generation: int = Field(default=30, ge=1)
+    commercial_frequency: int = Field(default=1, ge=1)
+    commercial_min_gap: int = Field(default=50, ge=1)
+    sort_by: str = "premiere_year"
+
+    @model_validator(mode="after")
+    def validate_sort_by(self) -> PlaylistConfig:
+        if self.sort_by not in VALID_SORT_VALUES:
+            raise ValueError(f"sort_by must be one of {VALID_SORT_VALUES}, got: '{self.sort_by}'")
         return self
 
 
@@ -162,6 +272,11 @@ DEFAULT_SHOWS: list[dict[str, str | int]] = [
 ]
 
 
+# ---------------------------------------------------------------------------
+# Config file operations
+# ---------------------------------------------------------------------------
+
+
 def find_config_path() -> Path | None:
     """Find the config file in search paths. Returns None if not found."""
     for path in CONFIG_SEARCH_PATHS:
@@ -170,8 +285,81 @@ def find_config_path() -> Path | None:
     return None
 
 
+def _is_v1_config(data: dict) -> bool:
+    """Check if a config dict is v1 format (no config_version field)."""
+    return "config_version" not in data
+
+
+def _migrate_v1_to_v2(data: dict, config_path: Path | None = None) -> dict:
+    """Migrate a v1 config dict to v2 format.
+
+    Creates a backup of the original file if config_path is provided.
+    """
+    if config_path is not None and config_path.exists():
+        backup_path = config_path.with_suffix(".yaml.v1.bak")
+        shutil.copy2(config_path, backup_path)
+
+    v2: dict = {"config_version": 2}
+
+    # Copy plex config as-is
+    if "plex" in data:
+        v2["plex"] = data["plex"]
+
+    # Convert shows: ShowConfig -> GlobalShow (drop positions)
+    # Also build PlaylistShow entries with positions
+    old_shows = data.get("shows", [])
+    global_shows = []
+    playlist_shows = []
+    for show in old_shows:
+        global_shows.append({
+            "name": show["name"],
+            "library": show.get("library", "TV Shows"),
+            "year": show.get("year"),
+            "enabled": True,
+        })
+        playlist_shows.append({
+            "name": show["name"],
+            "current_season": show.get("current_season", 1),
+            "current_episode": show.get("current_episode", 1),
+        })
+    v2["shows"] = global_shows
+
+    # Copy commercials as-is
+    if "commercials" in data:
+        v2["commercials"] = data["commercials"]
+
+    # SSH defaults
+    v2["ssh"] = {"enabled": False}
+
+    # Convert PlaylistConfig -> single PlaylistDefinition
+    old_playlist = data.get("playlist", {})
+    playlist_name = old_playlist.get("default_name", "Real TV")
+    v2["playlists"] = [{
+        "name": playlist_name,
+        "shows": playlist_shows,
+        "breaks": {
+            "enabled": True,
+            "style": "single",
+            "frequency": old_playlist.get("commercial_frequency", 1),
+            "min_gap": old_playlist.get("commercial_min_gap", 50),
+        },
+        "episodes_per_generation": old_playlist.get("episodes_per_generation", 30),
+        "sort_by": old_playlist.get("sort_by", "premiere_year"),
+    }]
+    v2["default_playlist"] = playlist_name
+
+    # Copy history
+    if "history" in data:
+        v2["history"] = data["history"]
+
+    return v2
+
+
 def load_config(path: Path | None = None) -> RTVConfig:
-    """Load config from YAML file. Raises FileNotFoundError if not found."""
+    """Load config from YAML file. Raises FileNotFoundError if not found.
+
+    Automatically migrates v1 configs to v2 format.
+    """
     if path is None:
         path = find_config_path()
     if path is None or not path.exists():
@@ -183,6 +371,15 @@ def load_config(path: Path | None = None) -> RTVConfig:
         data = yaml.safe_load(f)
     if data is None:
         data = {}
+
+    # Auto-migrate v1 -> v2
+    if _is_v1_config(data):
+        data = _migrate_v1_to_v2(data, path)
+        # Save migrated config
+        config = RTVConfig.model_validate(data)
+        save_config(config, path)
+        return config
+
     return RTVConfig.model_validate(data)
 
 
