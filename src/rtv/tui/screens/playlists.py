@@ -52,7 +52,6 @@ class PlaylistsScreen(Screen):
                 yield Input(
                     placeholder="Enter playlist name...",
                     id="new-playlist-input",
-                    display=False,
                 )
             yield DataTable(id="playlists-table")
             yield Static("", id="playlist-detail")
@@ -63,6 +62,9 @@ class PlaylistsScreen(Screen):
         yield Footer()
 
     def on_mount(self) -> None:
+        # Hide the new-playlist input initially
+        self.query_one("#new-playlist-input", Input).display = False
+
         table = self.query_one("#playlists-table", DataTable)
         table.cursor_type = "row"
         table.zebra_stripes = True
