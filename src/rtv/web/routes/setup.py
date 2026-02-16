@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import html as html_mod
+
 from fastapi import APIRouter, Request, Form
 from fastapi.responses import HTMLResponse
 
@@ -124,8 +126,8 @@ async def test_connection(request: Request):
     try:
         from rtv.plex_client import connect
         server = connect(config.plex)
-        server_name = getattr(server, "friendlyName", "Unknown")
-        version = getattr(server, "version", "Unknown")
+        server_name = html_mod.escape(getattr(server, "friendlyName", "Unknown"))
+        version = html_mod.escape(getattr(server, "version", "Unknown"))
         return HTMLResponse(
             f'<div class="toast toast-success" id="toast">'
             f'Connected to <strong>{server_name}</strong> (v{version})'
@@ -134,7 +136,7 @@ async def test_connection(request: Request):
     except Exception as e:
         return HTMLResponse(
             f'<div class="toast toast-error" id="toast">'
-            f'Connection failed: {e}'
+            f'Connection failed: {html_mod.escape(str(e))}'
             f'</div>'
         )
 
@@ -158,9 +160,9 @@ async def discover_servers(request: Request):
 
     rows = ""
     for srv in servers:
-        name = srv.get("name", "Unknown")
-        host = srv.get("host", "")
-        port = srv.get("port", 32400)
+        name = html_mod.escape(srv.get("name", "Unknown"))
+        host = html_mod.escape(srv.get("host", ""))
+        port = int(srv.get("port", 32400))
         url = f"https://{host}:{port}"
         rows += (
             f'<button type="button" class="discovered-server" '

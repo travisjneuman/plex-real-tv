@@ -178,7 +178,13 @@
     <!-- Add show to playlist -->
     {% if available_shows %}
     <section class="card">
-        <h2 class="card-title mb-2">Add Show to Playlist</h2>
+        <div class="flex items-center justify-between mb-2">
+            <h2 class="card-title">Add Show to Playlist</h2>
+            <form method="post" action="/playlists/{{ playlist.name }}/add-all-shows"
+                  onsubmit="return confirm('Add all {{ available_shows | length }} pool shows to this playlist?')" class="inline">
+                <button type="submit" class="btn btn-sm btn-outline">Add All ({{ available_shows | length }})</button>
+            </form>
+        </div>
         <p class="text-rtv-muted text-xs mb-4">
             Select a show from your global pool to add to this playlist. It will start at Season 1, Episode 1.
             Only shows from the Show Pool page appear here &mdash; add new shows there first.

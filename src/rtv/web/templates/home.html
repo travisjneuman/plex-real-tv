@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% block title %}Home{% endblock %}
+
+{% block content %}
+<div class="space-y-10">
+    <!-- Hero section -->
+    <section class="text-center py-8">
+        <div class="flex justify-center mb-6">
+            <div class="rtv-hero-icon">
+                <svg viewBox="0 0 64 64" fill="none" class="w-20 h-20">
+                    <rect x="4" y="8" width="56" height="40" rx="6" stroke="var(--rtv-accent)" stroke-width="3"/>
+                    <rect x="10" y="14" width="44" height="28" rx="2" fill="var(--rtv-accent)" opacity="0.12"/>
+                    <!-- Screen scanlines -->
+                    <line x1="10" y1="20" x2="54" y2="20" stroke="var(--rtv-accent)" stroke-width="0.5" opacity="0.2"/>
+                    <line x1="10" y1="26" x2="54" y2="26" stroke="var(--rtv-accent)" stroke-width="0.5" opacity="0.2"/>
+                    <line x1="10" y1="32" x2="54" y2="32" stroke="var(--rtv-accent)" stroke-width="0.5" opacity="0.2"/>
+                    <line x1="10" y1="38" x2="54" y2="38" stroke="var(--rtv-accent)" stroke-width="0.5" opacity="0.2"/>
+                    <!-- Stand -->
+                    <line x1="22" y1="48" x2="42" y2="48" stroke="var(--rtv-accent)" stroke-width="3"/>
+                    <line x1="18" y1="54" x2="46" y2="54" stroke="var(--rtv-muted)" stroke-width="2"/>
+                    <!-- Power LED -->
+                    <circle cx="52" cy="14" r="2.5" fill="var(--rtv-danger)"/>
+                    <!-- Antenna -->
+                    <line x1="24" y1="8" x2="16" y2="2" stroke="var(--rtv-muted)" stroke-width="1.5"/>
+                    <line x1="40" y1="8" x2="48" y2="2" stroke="var(--rtv-muted)" stroke-width="1.5"/>
+                </svg>
+            </div>
+        </div>
+
+        <h1 class="font-display text-4xl sm:text-5xl text-rtv-accent tracking-wide">
+            RealTV
+        </h1>
+        <p class="text-rtv-muted text-lg mt-3 max-w-xl mx-auto">
+            Simulate real television on your Plex server. Round-robin episodes from your favorite shows
+            with commercial breaks in between &mdash; just like channel surfing in the &rsquo;90s.
+        </p>
+    </section>
+
+    <!-- Stats row -->
+    <section class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div class="stat-card">
+            <div class="stat-value">{{ show_count }}</div>
+            <div class="stat-label">Shows in Pool</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{{ playlist_count }}</div>
+            <div class="stat-label">Playlists</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{{ generation_count }}</div>
+            <div class="stat-label">Generations</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{{ plex_status }}</div>
+            <div class="stat-label">Plex</div>
+        </div>
+    </section>
+
+    <!-- CTA buttons -->
+    <section class="flex flex-col sm:flex-row gap-4 justify-center">
+        {% if config_exists and show_count > 0 and playlist_count > 0 %}
+        <a href="/generate" class="btn btn-lg btn-generate">
+            Generate a Playlist
+        </a>
+        <a href="/playlists" class="btn btn-lg btn-outline">
+            Manage Playlists
+        </a>
+        {% elif config_exists %}
+        <a href="/shows" class="btn btn-lg btn-generate">
+            Add Shows to Pool
+        </a>
+        <a href="/playlists" class="btn btn-lg btn-outline">
+            Create a Playlist
+        </a>
+        {% else %}
+        <a href="/setup" class="btn btn-lg btn-generate">
+            Get Started
+        </a>
+        {% endif %}
+    </section>
+
+    <!-- How it works -->
+    <section class="card">
+        <h2 class="card-title text-center mb-6">How It Works</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
+            <div class="text-center">
+                <div class="text-3xl mb-2 text-rtv-accent font-display">1</div>
+                <h3 class="font-semibold text-rtv-text text-sm mb-1">Add Your Shows</h3>
+                <p class="text-rtv-muted text-xs">Scan your Plex library or manually add TV shows to the global pool.</p>
+            </div>
+            <div class="text-center">
+                <div class="text-3xl mb-2 text-rtv-accent font-display">2</div>
+                <h3 class="font-semibold text-rtv-text text-sm mb-1">Build Playlists</h3>
+                <p class="text-rtv-muted text-xs">Create playlists with different show lineups, break styles, and episode counts.</p>
+            </div>
+            <div class="text-center">
+                <div class="text-3xl mb-2 text-rtv-accent font-display">3</div>
+                <h3 class="font-semibold text-rtv-text text-sm mb-1">Generate &amp; Watch</h3>
+                <p class="text-rtv-muted text-xs">Hit Generate and a round-robin playlist appears in Plex, ready to play.</p>
+            </div>
+        </div>
+    </section>
+
+    {% if last_generation %}
+    <!-- Last generation info -->
+    <section class="card card-dim">
+        <div class="flex items-center justify-between">
+            <div>
+                <span class="text-rtv-muted text-xs uppercase tracking-wider">Last Generation</span>
+                <p class="text-rtv-text font-medium mt-1">{{ last_generation.playlist_name }}</p>
+                <p class="text-rtv-muted text-xs mt-1">
+                    {{ last_generation.episode_count }} episodes
+                    &middot; {{ last_generation.timestamp }}
+                </p>
+            </div>
+            <a href="/generate?playlist={{ last_generation.playlist_name }}" class="btn btn-sm btn-outline">
+                Regenerate
+            </a>
+        </div>
+    </section>
+    {% endif %}
+</div>
+{% endblock %}

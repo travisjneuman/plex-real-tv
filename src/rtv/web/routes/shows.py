@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import html
+
 from fastapi import APIRouter, Request, Form
 from fastapi.responses import HTMLResponse
 
@@ -75,7 +77,7 @@ async def add_show(
                 "shows": config.shows,
                 "membership": {},
                 "message": None,
-                "error": f"'{name}' is already in the pool.",
+                "error": f"'{html.escape(name)}' is already in the pool.",
             })
 
     year_val = int(year) if year.strip().isdigit() else None
@@ -89,7 +91,7 @@ async def add_show(
 
     try:
         save_config(config, config_path)
-        message = f"Added '{name}' to the show pool."
+        message = f"Added '{html.escape(name)}' to the show pool."
         error = None
     except Exception as e:
         message = None
@@ -119,12 +121,12 @@ async def remove_show(request: Request, show_name: str):
     config.shows = [s for s in config.shows if s.name != show_name]
 
     if len(config.shows) == original_count:
-        error = f"Show '{show_name}' not found."
+        error = f"Show '{html.escape(show_name)}' not found."
         message = None
     else:
         try:
             save_config(config, config_path)
-            message = f"Removed '{show_name}' from the pool."
+            message = f"Removed '{html.escape(show_name)}' from the pool."
             error = None
         except Exception as e:
             message = None
@@ -152,7 +154,7 @@ async def toggle_show(request: Request, show_name: str):
     gs = config.get_global_show(show_name)
     if gs is None:
         return HTMLResponse(
-            f'<span class="badge badge-error">Not found</span>',
+            '<span class="badge badge-error">Not found</span>',
             status_code=404,
         )
 
@@ -162,17 +164,19 @@ async def toggle_show(request: Request, show_name: str):
     except Exception:
         pass
 
+    safe_name = html.escape(show_name, quote=True)
+
     if gs.enabled:
         return HTMLResponse(
             f'<button class="toggle-btn toggle-on" '
-            f'hx-post="/shows/toggle/{show_name}" hx-swap="outerHTML" '
+            f'hx-post="/shows/toggle/{safe_name}" hx-swap="outerHTML" '
             f'title="Click to disable">'
             f'ON</button>'
         )
     else:
         return HTMLResponse(
             f'<button class="toggle-btn toggle-off" '
-            f'hx-post="/shows/toggle/{show_name}" hx-swap="outerHTML" '
+            f'hx-post="/shows/toggle/{safe_name}" hx-swap="outerHTML" '
             f'title="Click to enable">'
             f'OFF</button>'
         )
@@ -188,7 +192,7 @@ async def scan_plex_shows(request: Request):
         server = connect(config.plex)
     except Exception as e:
         return HTMLResponse(
-            f'<div class="toast toast-error">Could not connect to Plex: {e}</div>'
+            f'<div class="toast toast-error">Could not connect to Plex: {html.escape(str(e))}</div>'
         )
 
     existing_names = {s.name.lower() for s in config.shows}
@@ -218,25 +222,106 @@ async def scan_plex_shows(request: Request):
 
     rows = ""
     for d in discovered[:50]:
-        name = d["name"]
-        lib = d["library"]
-        year = d["year"] or ""
+        name = html.escape(str(d["name"]), quote=True)
+        lib = html.escape(str(d["library"]), quote=True)
+        year = html.escape(str(d["year"])) if d["year"] else ""
+        # Use JSON-safe values in hx-vals
+        json_name = name.replace("'", "&#39;")
+        json_lib = lib.replace("'", "&#39;")
         rows += (
             f'<div class="scan-row">'
             f'<span class="scan-title">{name}</span>'
             f'<span class="scan-meta">{year} &middot; {lib}</span>'
             f'<button class="btn btn-sm btn-accent" '
             f'hx-post="/shows/add" '
-            f'hx-vals=\'{{"show_name":"{name}","library":"{lib}","year":"{year}"}}\' '
+            f'hx-vals=\'{{"show_name":"{json_name}","library":"{json_lib}","year":"{year}"}}\' '
             f'hx-target="#shows-container" hx-swap="innerHTML">'
             f'Add</button>'
             f'</div>'
         )
 
     count_note = f" (showing first 50)" if len(discovered) > 50 else ""
+    # Build "Add All" button
+    add_all_btn = (
+        f'<button class="btn btn-sm btn-outline" '
+        f'hx-post="/shows/add-all-scanned" '
+        f'hx-target="#shows-container" hx-swap="innerHTML" '
+        f'hx-confirm="Add all {len(discovered)} discovered shows to the pool?">'
+        f'Add All ({len(discovered)})</button>'
+    )
+
     return HTMLResponse(
         f'<div class="scan-results">'
+        f'<div class="flex items-center justify-between mb-2">'
         f'<p class="scan-header">Found {len(discovered)} new show(s){count_note}:</p>'
+        f'{add_all_btn}'
+        f'</div>'
         f'{rows}'
         f'</div>'
     )
+
+
+@router.post("/add-all-scanned", response_class=HTMLResponse)
+async def add_all_scanned(request: Request):
+    """Scan Plex and add all discovered shows to the pool in one action."""
+    templates = request.app.state.templates
+    config, config_path = _load_config()
+
+    try:
+        from rtv.plex_client import connect, get_all_shows
+        server = connect(config.plex)
+    except Exception as e:
+        return templates.TemplateResponse("shows.html", {
+            "request": request,
+            "config": config,
+            "shows": config.shows,
+            "membership": {},
+            "message": None,
+            "error": f"Could not connect to Plex: {e}",
+        })
+
+    existing_names = {s.name.lower() for s in config.shows}
+    added_count = 0
+
+    for lib_name in config.plex.tv_libraries:
+        try:
+            shows = get_all_shows(server, lib_name)
+            for show in shows:
+                title = show.title
+                if title.lower() not in existing_names:
+                    year = getattr(show, "year", None)
+                    config.shows.append(GlobalShow(
+                        name=title,
+                        library=lib_name,
+                        year=year,
+                        enabled=True,
+                    ))
+                    existing_names.add(title.lower())
+                    added_count += 1
+        except Exception:
+            continue
+
+    if added_count > 0:
+        try:
+            save_config(config, config_path)
+            message = f"Added {added_count} show(s) to the pool."
+            error = None
+        except Exception as e:
+            message = None
+            error = f"Failed to save: {e}"
+    else:
+        message = None
+        error = "No new shows to add."
+
+    membership: dict[str, list[str]] = {}
+    for s in config.shows:
+        membership[s.name] = config.get_playlist_membership(s.name)
+
+    return templates.TemplateResponse("shows.html", {
+        "request": request,
+        "config": config,
+        "shows": config.shows,
+        "membership": membership,
+        "message": message,
+        "error": error,
+    })

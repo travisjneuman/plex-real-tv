@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}RealTV{% endblock %} &mdash; plex-real-tv</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
 
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -58,7 +59,7 @@
         <div class="max-w-6xl mx-auto px-4 sm:px-6">
             <div class="flex items-center justify-between h-14">
                 <!-- Logo -->
-                <a href="/setup" class="flex items-center gap-3 group">
+                <a href="/" class="flex items-center gap-3 group">
                     <div class="rtv-logo-icon">
                         <svg viewBox="0 0 28 28" fill="none" class="w-7 h-7">
                             <rect x="2" y="4" width="24" height="18" rx="3" stroke="var(--rtv-accent)" stroke-width="2"/>
@@ -82,10 +83,16 @@
                     <a href="/shows"
                        class="nav-link {% if request.url.path.startswith('/shows') %}nav-active{% endif %}">
                         Shows
+                        {% if request.state.show_count is defined and request.state.show_count > 0 %}
+                        <span class="nav-badge">{{ request.state.show_count }}</span>
+                        {% endif %}
                     </a>
                     <a href="/playlists"
                        class="nav-link {% if request.url.path.startswith('/playlists') %}nav-active{% endif %}">
                         Playlists
+                        {% if request.state.playlist_count is defined and request.state.playlist_count > 0 %}
+                        <span class="nav-badge">{{ request.state.playlist_count }}</span>
+                        {% endif %}
                     </a>
                     <a href="/generate"
                        class="nav-link nav-generate {% if request.url.path.startswith('/generate') %}nav-active{% endif %}">
@@ -109,5 +116,29 @@
     </footer>
 
     {% block scripts %}{% endblock %}
+    <script>
+    // Auto-dismiss toasts after 5 seconds
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.toast').forEach(function(toast) {
+            setTimeout(function() {
+                toast.style.transition = 'opacity 0.4s ease-out';
+                toast.style.opacity = '0';
+                setTimeout(function() { toast.remove(); }, 400);
+            }, 5000);
+        });
+    });
+    // Also handle dynamically-added toasts (htmx swaps)
+    document.body.addEventListener('htmx:afterSwap', function() {
+        document.querySelectorAll('.toast').forEach(function(toast) {
+            if (toast.dataset.autoDismiss) return;
+            toast.dataset.autoDismiss = 'true';
+            setTimeout(function() {
+                toast.style.transition = 'opacity 0.4s ease-out';
+                toast.style.opacity = '0';
+                setTimeout(function() { toast.remove(); }, 400);
+            }, 5000);
+        });
+    });
+    </script>
 </body>
 </html>

@@ -618,6 +618,42 @@ select.form-input {
     }
 }
 
+/* --- Nav badges --- */
+.nav-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.125rem;
+    height: 1.125rem;
+    padding: 0 0.3rem;
+    font-size: 0.625rem;
+    font-weight: 700;
+    line-height: 1;
+    border-radius: 9999px;
+    background: var(--rtv-accent);
+    color: var(--rtv-bg);
+    margin-left: 0.25rem;
+    vertical-align: middle;
+}
+
+/* --- Hero icon (landing page) --- */
+.rtv-hero-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    border-radius: 1rem;
+    background: var(--rtv-surface);
+    border: 2px solid var(--rtv-border);
+    box-shadow: 0 0 40px var(--rtv-glow), inset 0 0 30px var(--rtv-glow);
+    animation: heroGlow 3s ease-in-out infinite alternate;
+}
+
+@keyframes heroGlow {
+    from { box-shadow: 0 0 40px var(--rtv-glow), inset 0 0 30px var(--rtv-glow); }
+    to   { box-shadow: 0 0 60px var(--rtv-glow-strong), inset 0 0 40px var(--rtv-glow-strong); }
+}
+
 /* --- Utility: inline form --- */
 .inline {
     display: inline;

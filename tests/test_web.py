@@ -67,11 +67,12 @@ def client(tmp_config):
 # ──────────────────────────────────────────────
 
 
-class TestRootRedirect:
-    def test_root_redirects_to_generate(self, client):
-        resp = client.get("/", follow_redirects=False)
-        assert resp.status_code == 307
-        assert resp.headers["location"] == "/generate/"
+class TestLandingPage:
+    def test_root_shows_landing_page(self, client):
+        resp = client.get("/")
+        assert resp.status_code == 200
+        assert "RealTV" in resp.text
+        assert "Shows in Pool" in resp.text
 
 
 class TestSetupRoutes:

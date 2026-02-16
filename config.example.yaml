@@ -1,5 +1,7 @@
-# plex-real-tv configuration
+# plex-real-tv v2 configuration
 # Copy to config.yaml and fill in your values, or run `rtv init`
+
+config_version: 2
 
 plex:
   url: "http://localhost:32400"
@@ -9,18 +11,19 @@ plex:
     # - "TV Shows 2"
     # - "Anime"
 
-shows: []
-  # - name: "The Office (US)"
-  #   library: "TV Shows"
-  #   current_season: 1
-  #   current_episode: 1
-  #   year: 2005
-  # - name: "Seinfeld"
-  #   library: "TV Shows"
-  #   current_season: 1
-  #   current_episode: 1
-  #   year: 1989
+# Global show pool — all shows available for playlists
+shows:
+  - name: "The Office (US)"
+    library: "TV Shows"
+    year: 2005
+    enabled: true
+  - name: "Seinfeld"
+    library: "TV Shows"
+    year: 1989
+    enabled: true
+  # Add more shows here or use `rtv web` / `rtv scan` to import from Plex
 
+# Commercials configuration (for commercial breaks between episodes)
 commercials:
   library_name: "RealTV Commercials"
   library_path: "F:\\Commercials"
@@ -35,12 +38,38 @@ commercials:
       search_terms: ["90s commercials", "1990s TV ads"]
       weight: 1.0
 
-playlist:
-  default_name: "Real TV"
-  episodes_per_generation: 30
-  commercial_frequency: 1
-  commercial_min_gap: 50  # Don't repeat a commercial until this many others have played
-  sort_by: "premiere_year"
+# SSH remote execution (optional — for running on a remote Plex server)
+ssh:
+  enabled: false
+  host: ""
+  port: 22
+  username: ""
+  key_path: ""
+  remote_commercial_path: ""
+
+# Playlists — each playlist has its own show lineup, break settings, and positions
+playlists:
+  - name: "Real TV"
+    shows:
+      - name: "The Office (US)"
+        current_season: 1
+        current_episode: 1
+      - name: "Seinfeld"
+        current_season: 1
+        current_episode: 1
+    breaks:
+      enabled: true
+      style: "single"       # "single", "block", or set enabled: false to disable
+      frequency: 1           # Insert a break every N episodes
+      min_gap: 50            # Don't repeat a commercial until this many others have played
+      block_duration:
+        min: 30
+        max: 120
+    episodes_per_generation: 30  # 0 = unlimited (run all shows to exhaustion)
+    sort_by: "premiere_year"     # "premiere_year", "premiere_year_desc", "alphabetical"
+
+# Which playlist to generate by default (used by `rtv generate` with no arguments)
+default_playlist: "Real TV"
 
 # History is managed automatically by 'rtv generate' — do not edit manually
 history: []

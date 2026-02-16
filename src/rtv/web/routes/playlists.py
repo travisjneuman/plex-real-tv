@@ -249,6 +249,53 @@ async def add_show_to_playlist(
     })
 
 
+@router.post("/{playlist_name}/add-all-shows", response_class=HTMLResponse)
+async def add_all_shows_to_playlist(request: Request, playlist_name: str):
+    """Add all available global pool shows to this playlist at S01E01."""
+    templates = request.app.state.templates
+    config, config_path = _load_config()
+
+    pl = config.get_playlist(playlist_name)
+    if pl is None:
+        return RedirectResponse("/playlists", status_code=303)
+
+    playlist_show_names = {ps.name.lower() for ps in pl.shows}
+    added_count = 0
+
+    for gs in config.shows:
+        if gs.name.lower() not in playlist_show_names:
+            pl.shows.append(PlaylistShow(name=gs.name))
+            playlist_show_names.add(gs.name.lower())
+            added_count += 1
+
+    if added_count > 0:
+        try:
+            save_config(config, config_path)
+            message = f"Added {added_count} show(s) to playlist."
+            error = None
+        except Exception as e:
+            message = None
+            error = str(e)
+    else:
+        message = None
+        error = "All pool shows are already in this playlist."
+
+    available_shows = [
+        s for s in config.shows
+        if s.name.lower() not in playlist_show_names
+    ]
+
+    return templates.TemplateResponse("playlist_detail.html", {
+        "request": request,
+        "config": config,
+        "playlist": pl,
+        "available_shows": available_shows,
+        "is_default": pl.name == config.default_playlist,
+        "message": message,
+        "error": error,
+    })
+
+
 @router.post("/{playlist_name}/remove-show/{show_name}", response_class=HTMLResponse)
 async def remove_show_from_playlist(
     request: Request,
