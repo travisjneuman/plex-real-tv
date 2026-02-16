@@ -64,7 +64,7 @@ def init() -> None:
         "Commercial library name in Plex", default="RealTV Commercials"
     )
     commercial_path = click.prompt(
-        "Commercial files path", default=r"F:\Commercials"
+        "Commercial files path", default=r"D:\Media\Commercials"
     )
 
     config = RTVConfig(

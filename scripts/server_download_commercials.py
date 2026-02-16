@@ -1,7 +1,7 @@
 r"""Batch download retro commercials directly on the Plex server.
 
-Target: ~2,000 clips across 5 decades (70s-2010s).
-Downloads to F:\Commercials\{decade}\ on the local machine.
+Downloads to OUTPUT_BASE\{decade}\ on the local machine.
+Edit OUTPUT_BASE below to match your commercial library path.
 """
 
 from __future__ import annotations
@@ -719,7 +719,7 @@ DECADE_TARGETS: dict[str, int] = {
 }
 
 TARGET_PER_DECADE = 150  # Legacy default, overridden by DECADE_TARGETS
-OUTPUT_BASE = Path(r"F:\Commercials")
+OUTPUT_BASE = Path(os.environ.get("RTV_COMMERCIAL_PATH", r"D:\Media\Commercials"))
 
 # Duration filter: 10s-300s (individual commercials, not compilations)
 MIN_DURATION = 10

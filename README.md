@@ -1,8 +1,8 @@
 # plex-real-tv
 
-Generate Plex playlists that simulate real TV — round-robin episodes from multiple shows with vintage commercial breaks between them.
+Generate [Plex](https://www.plex.tv/) playlists that simulate real TV — round-robin episodes from multiple shows with commercial breaks between them.
 
-Point it at your Plex server, tell it which shows to include, build a library of old commercials from YouTube, and run `rtv generate`. You get a playlist that feels like flipping on a cable channel: an episode of Seinfeld, a vintage commercial, an episode of The Office, another commercial, repeat. One random commercial per break with no-repeat guarantee across 50+ plays.
+Point it at your Plex server, tell it which shows to include, build up a library of commercials over time, and run `rtv generate`. You get a playlist that feels like flipping on a cable channel: an episode of Seinfeld, a commercial, an episode of The Office, another commercial, repeat. One random commercial per break with a configurable no-repeat window so you don't see the same one twice.
 
 ## Quick Start
 
@@ -17,7 +17,7 @@ rtv init
 rtv add-show "Seinfeld"
 rtv add-show "The Office"
 
-# 4. Find and download some commercials
+# 4. Search for and download some commercials (you build your own library)
 rtv find-commercials -c "80s"
 
 # 5. Generate your playlist
@@ -28,8 +28,8 @@ Open Plex, find the "Real TV" playlist, and hit play.
 
 ## Prerequisites
 
-- **Python 3.11+**
-- **Plex Media Server** running and accessible over the network
+- **[Python 3.11+](https://www.python.org/)**
+- **[Plex Media Server](https://www.plex.tv/)** running and accessible over the network
 - **Plex Token** — you need your X-Plex-Token to authenticate. Find it by following [Plex's guide](https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/).
 
 ## Installation
@@ -50,13 +50,13 @@ rtv --help
 ### Dependencies
 
 Installed automatically:
-- `click` — CLI framework
-- `PlexAPI` — Plex server communication
-- `yt-dlp` — YouTube search and download
-- `pyyaml` — Config file parsing
-- `pydantic` — Config validation
-- `rapidfuzz` — Fuzzy show name matching
-- `rich` — Terminal output formatting
+- [`click`](https://click.palletsprojects.com/) — CLI framework
+- [`PlexAPI`](https://github.com/pkkid/python-plexapi) — Plex server communication
+- [`yt-dlp`](https://github.com/yt-dlp/yt-dlp) — Video search and download (used for finding commercials)
+- [`pyyaml`](https://github.com/yaml/pyyaml) — Config file parsing
+- [`pydantic`](https://docs.pydantic.dev/) — Config validation
+- [`rapidfuzz`](https://github.com/rapidfuzz/RapidFuzz) — Fuzzy show name matching
+- [`rich`](https://github.com/Textualize/rich) — Terminal output formatting
 
 ## Configuration
 
@@ -168,8 +168,10 @@ rtv remove-show "Seinfeld"
 
 ### Commercial Management
 
+RTV includes optional [yt-dlp](https://github.com/yt-dlp/yt-dlp) integration to help you search for and download commercials to build your own library. You're responsible for ensuring your use complies with applicable terms of service and copyright law. You can also add commercial clips from any source — just drop MP4 files into your commercial folder.
+
 ```bash
-# Search YouTube for commercials
+# Search for commercials (uses yt-dlp)
 rtv find-commercials -c "80s"
 # Displays results, prompts you to download
 
@@ -434,7 +436,7 @@ Episode 7: Long Show S01E04
 
 Each commercial break inserts exactly one random commercial between episodes. Commercials are baked into the Plex playlist at generation time (Plex has no dynamic ad insertion).
 
-**No-repeat guarantee:** A commercial won't replay until at least `commercial_min_gap` (default 50) other commercials have played. With a library of 2,000 clips, this means excellent variety across thousands of episodes. If your library is smaller than the gap, the oldest-played commercial is reused first.
+**No-repeat guarantee:** A commercial won't replay until at least `commercial_min_gap` (default 50) other commercials have played. The larger your library, the more variety you get. If your library is smaller than the gap setting, the oldest-played commercial is reused first.
 
 ### Position Tracking
 
@@ -516,7 +518,7 @@ ssh plex "hostname && python --version"
 
 ### Batch Commercial Downloads
 
-The download script (`scripts/server_download_commercials.py`) runs on the server so downloads go over the server's VPN and files land directly on `F:\Commercials\`. The script is copied via `scp` and executed remotely.
+The download script (`scripts/server_download_commercials.py`) can run directly on your server so downloads land on the correct drive without transferring files between machines. Copy it via `scp` and execute remotely.
 
 **Step 1: Copy the script to the server**
 
@@ -552,7 +554,7 @@ ssh plex "powershell -c \"Get-Content C:\commercial_download.log -Tail 10\""
 ssh plex "powershell -c \"(Select-String -Path C:\commercial_download.log -Pattern '^\s+\[(\d+)\]' | Select-Object -Last 1).Line.Trim()\""
 
 # Count files per decade
-ssh plex "for /d %d in (F:\Commercials\*) do @echo %d & dir /b /a-d \"%d\\*.mp4\" 2>nul | find /c /v \"\""
+ssh plex "for /d %d in (D:\Media\Commercials\*) do @echo %d & dir /b /a-d \"%d\\*.mp4\" 2>nul | find /c /v \"\""
 ```
 
 **Step 4: Clean up after completion**
@@ -566,10 +568,10 @@ ssh plex "schtasks /delete /tn \"DownloadCommercials\" /f"
 ```bash
 # 1. Trigger Plex library scan (or do it from the Plex web UI)
 # 2. Verify commercial count
-ssh plex "for /d %d in (F:\Commercials\*) do @echo %d & dir /b /a-d \"%d\\*.mp4\" 2>nul | find /c /v \"\""
+ssh plex "for /d %d in (D:\Media\Commercials\*) do @echo %d & dir /b /a-d \"%d\\*.mp4\" 2>nul | find /c /v \"\""
 
 # 3. Regenerate playlist with new commercials
-rtv generate --from-start -e 5166
+rtv generate --from-start
 ```
 
 ### Key Gotchas
@@ -643,6 +645,10 @@ pip show plex-real-tv
 | `rtv preview [NAME]` | Dry-run preview of playlist |
 | `rtv export` | Export playlist to CSV or JSON |
 | `rtv history` | Show last 5 generated playlists |
+
+## Disclaimer
+
+This tool generates playlists from media you already own in your Plex library. It does not distribute, stream, or share any media content. Commercial clips are sourced and stored locally by the user — RTV does not include or distribute any media files. You are responsible for ensuring your use of yt-dlp and any downloaded content complies with applicable terms of service and copyright law.
 
 ## License
 
