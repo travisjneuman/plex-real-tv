@@ -1,0 +1,298 @@
+/* plex-real-tv Terminal UI — Textual CSS */
+
+/* ── Global ──────────────────────────────────────────────── */
+
+Screen {
+    background: $surface;
+}
+
+/* ── Header / Footer ─────────────────────────────────────── */
+
+Header {
+    background: #1a1a2e;
+    color: #e94560;
+    text-style: bold;
+}
+
+Footer {
+    background: #1a1a2e;
+}
+
+FooterKey {
+    background: #16213e;
+    color: #e94560;
+}
+
+/* ── Dashboard ───────────────────────────────────────────── */
+
+#dashboard-container {
+    layout: vertical;
+    padding: 1 2;
+}
+
+#status-panel {
+    height: auto;
+    margin-bottom: 1;
+}
+
+#stats-row {
+    layout: horizontal;
+    height: auto;
+    margin-bottom: 1;
+}
+
+.stat-box {
+    width: 1fr;
+    height: auto;
+    min-height: 5;
+    margin: 0 1 0 0;
+    padding: 1;
+    border: solid #16213e;
+    content-align: center middle;
+}
+
+.stat-box:focus {
+    border: solid #e94560;
+}
+
+.stat-value {
+    text-style: bold;
+    color: #e94560;
+    text-align: center;
+    width: 100%;
+}
+
+.stat-label {
+    color: #a0a0a0;
+    text-align: center;
+    width: 100%;
+}
+
+#history-panel {
+    height: auto;
+    max-height: 12;
+    margin-bottom: 1;
+}
+
+#quick-actions {
+    layout: horizontal;
+    height: auto;
+    margin-top: 1;
+}
+
+#quick-actions Button {
+    margin: 0 1 0 0;
+}
+
+/* ── Shows Screen ────────────────────────────────────────── */
+
+#shows-container {
+    layout: vertical;
+    padding: 1 2;
+}
+
+#show-filter {
+    height: 3;
+    margin-bottom: 1;
+    dock: top;
+}
+
+#shows-table {
+    height: 1fr;
+}
+
+#show-status-bar {
+    height: 1;
+    dock: bottom;
+    background: #16213e;
+    color: #a0a0a0;
+    padding: 0 2;
+}
+
+/* ── Playlists Screen ────────────────────────────────────── */
+
+#playlists-container {
+    layout: vertical;
+    padding: 1 2;
+}
+
+#playlists-top {
+    layout: horizontal;
+    height: 3;
+    margin-bottom: 1;
+}
+
+#playlists-table {
+    height: 1fr;
+    margin-bottom: 1;
+}
+
+#playlist-detail {
+    height: auto;
+    max-height: 16;
+    border: solid #16213e;
+    padding: 1;
+    margin-bottom: 1;
+}
+
+#playlist-actions {
+    layout: horizontal;
+    height: auto;
+    dock: bottom;
+}
+
+#playlist-actions Button {
+    margin: 0 1 0 0;
+}
+
+/* ── Generate Screen ─────────────────────────────────────── */
+
+#generate-container {
+    layout: vertical;
+    padding: 1 2;
+    align: center middle;
+}
+
+#gen-header {
+    height: auto;
+    margin-bottom: 1;
+    text-align: center;
+}
+
+#gen-progress-bar {
+    height: 3;
+    margin: 1 4;
+}
+
+#gen-current-show {
+    height: auto;
+    text-align: center;
+    margin-bottom: 1;
+    color: #e94560;
+    text-style: bold;
+}
+
+#gen-log {
+    height: 1fr;
+    margin: 1 0;
+    border: solid #16213e;
+}
+
+#gen-summary {
+    height: auto;
+    max-height: 14;
+    margin-top: 1;
+}
+
+#gen-actions {
+    layout: horizontal;
+    height: auto;
+    margin-top: 1;
+    align: center middle;
+}
+
+#gen-actions Button {
+    margin: 0 1 0 0;
+}
+
+/* ── Buttons ─────────────────────────────────────────────── */
+
+Button {
+    background: #16213e;
+    color: #e94560;
+    border: tall #e94560;
+    min-width: 16;
+}
+
+Button:hover {
+    background: #e94560;
+    color: #0f3460;
+}
+
+Button:focus {
+    background: #e94560;
+    color: #0f3460;
+    text-style: bold;
+}
+
+Button.-primary {
+    background: #e94560;
+    color: #1a1a2e;
+    border: tall #e94560;
+}
+
+Button.-primary:hover {
+    background: #ff6b6b;
+    color: #1a1a2e;
+}
+
+/* ── DataTable ───────────────────────────────────────────── */
+
+DataTable {
+    height: 1fr;
+}
+
+DataTable > .datatable--header {
+    background: #16213e;
+    color: #e94560;
+    text-style: bold;
+}
+
+DataTable > .datatable--cursor {
+    background: #e94560;
+    color: #1a1a2e;
+}
+
+DataTable > .datatable--even-row {
+    background: #0f3460 10%;
+}
+
+/* ── Input ───────────────────────────────────────────────── */
+
+Input {
+    border: tall #16213e;
+    background: #0a0a1a;
+    color: #e0e0e0;
+}
+
+Input:focus {
+    border: tall #e94560;
+}
+
+/* ── Static labels ───────────────────────────────────────── */
+
+.section-title {
+    text-style: bold;
+    color: #e94560;
+    margin-bottom: 1;
+}
+
+.muted {
+    color: #666;
+}
+
+.connected {
+    color: #00ff88;
+}
+
+.disconnected {
+    color: #ff4444;
+}
+
+/* ── ProgressBar ─────────────────────────────────────────── */
+
+ProgressBar Bar > .bar--bar {
+    color: #e94560;
+}
+
+ProgressBar Bar > .bar--complete {
+    color: #00ff88;
+}
+
+/* ── RichLog ─────────────────────────────────────────────── */
+
+RichLog {
+    background: #0a0a1a;
+    border: solid #16213e;
+    padding: 0 1;
+}
