@@ -48,16 +48,19 @@ def build_macos():
     project_root = get_project_root()
     spec_file = project_root / "scripts" / "portable" / "rtv-desktop.spec"
     
+    if not spec_file.exists():
+        print(f"Error: Spec file not found: {spec_file}")
+        sys.exit(1)
+    
     cmd = [
         sys.executable, "-m", "PyInstaller",
         "--clean",
         "--noconfirm",
-        "--windowed",
-        "--osx-bundle-identifier=com.plexrealtv.desktop",
         str(spec_file),
     ]
     
     print(f"Building macOS application...")
+    print(f"Command: {' '.join(cmd)}")
     subprocess.run(cmd, cwd=str(project_root), check=True)
     
     dist_dir = project_root / "dist"

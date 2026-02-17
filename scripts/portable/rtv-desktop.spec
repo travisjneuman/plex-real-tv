@@ -2,6 +2,7 @@
 """PyInstaller spec file for RealTV Desktop portable application."""
 
 import sys
+import platform
 from pathlib import Path
 
 block_cipher = None
@@ -9,6 +10,7 @@ block_cipher = None
 PROJECT_ROOT = Path(SPECPATH).parent.parent
 SRC_DIR = PROJECT_ROOT / "src"
 ASSETS_DIR = PROJECT_ROOT / "assets"
+IS_MACOS = platform.system() == "Darwin"
 
 a = Analysis(
     [str(SRC_DIR / "rtv" / "desktop" / "app.py")],
@@ -116,25 +118,61 @@ a = Analysis(
 
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
-exe = EXE(
-    pyz,
-    a.scripts,
-    a.binaries,
-    a.zipfiles,
-    a.datas,
-    [],
-    name="RealTV",
-    debug=False,
-    bootloader_ignore_signals=False,
-    strip=False,
-    upx=True,
-    upx_exclude=[],
-    runtime_tmpdir=None,
-    console=False,
-    disable_windowed_traceback=False,
-    argv_emulation=False,
-    target_arch=None,
-    codesign_identity=None,
-    entitlements_file=None,
-    icon=str(ASSETS_DIR / "logo.ico") if (ASSETS_DIR / "logo.ico").exists() else None,
-)
+if IS_MACOS:
+    exe = EXE(
+        pyz,
+        a.scripts,
+        [],
+        exclude_binaries=True,
+        name="RealTV",
+        debug=False,
+        bootloader_ignore_signals=False,
+        strip=False,
+        upx=True,
+        console=False,
+        disable_windowed_traceback=False,
+        argv_emulation=False,
+        target_arch=None,
+        codesign_identity=None,
+        entitlements_file=None,
+    )
+    coll = COLLECT(
+        exe,
+        a.binaries,
+        a.zipfiles,
+        a.datas,
+        strip=False,
+        upx=True,
+        upx_exclude=[],
+        name="RealTV",
+    )
+    app = BUNDLE(
+        coll,
+        name="RealTV.app",
+        icon=None,
+        bundle_identifier="com.plexrealtv.desktop",
+        version="0.3.0",
+    )
+else:
+    exe = EXE(
+        pyz,
+        a.scripts,
+        a.binaries,
+        a.zipfiles,
+        a.datas,
+        [],
+        name="RealTV",
+        debug=False,
+        bootloader_ignore_signals=False,
+        strip=False,
+        upx=True,
+        upx_exclude=[],
+        runtime_tmpdir=None,
+        console=False,
+        disable_windowed_traceback=False,
+        argv_emulation=False,
+        target_arch=None,
+        codesign_identity=None,
+        entitlements_file=None,
+        icon=str(ASSETS_DIR / "logo.ico") if (ASSETS_DIR / "logo.ico").exists() else None,
+    )
