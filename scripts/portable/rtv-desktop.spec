@@ -104,7 +104,7 @@ a = Analysis(
         "jinja2",
         "jinja2.ext",
     ],
-    hookspath=[],
+    hookspath=[str(PROJECT_ROOT / "scripts" / "portable")],
     hooksconfig={},
     runtime_hooks=[],
     excludes=[

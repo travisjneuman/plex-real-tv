@@ -39,11 +39,10 @@ def find_free_port() -> int:
 
 def create_desktop_app():
     """Create FastAPI app with offline templates and static files."""
-    from fastapi import FastAPI
+    from fastapi import FastAPI, Request
     from fastapi.responses import HTMLResponse
     from fastapi.staticfiles import StaticFiles
     from fastapi.templating import Jinja2Templates
-    from starlette.requests import Request
     from jinja2 import FileSystemLoader, ChoiceLoader
 
     app = FastAPI(

@@ -4,9 +4,8 @@ from __future__ import annotations
 
 import html as html_mod
 
-from fastapi import APIRouter, Form
+from fastapi import APIRouter, Request, Form
 from fastapi.responses import HTMLResponse
-from starlette.requests import Request
 
 from rtv.config import (
     RTVConfig,

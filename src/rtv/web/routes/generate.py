@@ -8,9 +8,8 @@ import json
 from datetime import datetime
 from typing import AsyncGenerator
 
-from fastapi import APIRouter, Form
+from fastapi import APIRouter, Request, Form
 from fastapi.responses import HTMLResponse
-from starlette.requests import Request
 
 from rtv.config import (
     HistoryEntry,
