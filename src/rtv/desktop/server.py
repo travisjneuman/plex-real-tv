@@ -2,14 +2,31 @@
 
 from __future__ import annotations
 
+import sys
 import socket
 import threading
 from pathlib import Path
 
-DESKTOP_DIR = Path(__file__).parent
+
+def get_base_path() -> Path:
+    """Get base path for bundled resources (works in dev and PyInstaller).
+    
+    In PyInstaller bundle: returns sys._MEIPASS (extraction root)
+    In dev mode: returns project src directory
+    """
+    if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+        return Path(sys._MEIPASS)
+    # Dev mode: this file is at src/rtv/desktop/server.py
+    # Go up 3 levels to get to src/
+    return Path(__file__).parent.parent.parent
+
+
+BASE_PATH = get_base_path()
+DESKTOP_DIR = BASE_PATH / "rtv" / "desktop"
 TEMPLATES_DIR = DESKTOP_DIR / "templates"
 STATIC_DIR = DESKTOP_DIR / "static"
-WEB_STATIC_DIR = DESKTOP_DIR.parent / "web" / "static"
+WEB_TEMPLATES_DIR = BASE_PATH / "rtv" / "web" / "templates"
+WEB_STATIC_DIR = BASE_PATH / "rtv" / "web" / "static"
 
 
 def find_free_port() -> int:
@@ -26,6 +43,7 @@ def create_desktop_app():
     from fastapi.responses import HTMLResponse
     from fastapi.staticfiles import StaticFiles
     from fastapi.templating import Jinja2Templates
+    from jinja2 import FileSystemLoader, ChoiceLoader
 
     app = FastAPI(
         title="RealTV Desktop",
@@ -33,10 +51,20 @@ def create_desktop_app():
     )
 
     # Mount static directories
-    # Desktop static (fonts, vendor JS)
-    app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
-
-    templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
+    # Desktop static (fonts, vendor JS) - mounted at /static first
+    # Then web static overlays on top (app.css, favicon)
+    if STATIC_DIR.exists():
+        app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static-desktop")
+    
+    # Use both desktop and web templates - desktop overrides web
+    template_dirs = []
+    if TEMPLATES_DIR.exists():
+        template_dirs.append(str(TEMPLATES_DIR))
+    if WEB_TEMPLATES_DIR.exists():
+        template_dirs.append(str(WEB_TEMPLATES_DIR))
+    
+    loader = ChoiceLoader([FileSystemLoader(d) for d in template_dirs]) if template_dirs else None
+    templates = Jinja2Templates(directory=template_dirs[0] if template_dirs else ".", loader=loader)
     app.state.templates = templates
 
     # Import and include routers from web UI
@@ -95,14 +123,21 @@ def create_desktop_app():
     return app
 
 
-def run_server(port: int, ready_event: threading.Event = None):
+def run_server(port: int, ready_event: threading.Event | None = None):
     """Run the FastAPI server on the given port."""
     import uvicorn
 
     app = create_desktop_app()
-    
-    if ready_event:
-        ready_event.set()
+
+    class ServerWithReady(uvicorn.Server):
+        def __init__(self, config, ready_evt):
+            super().__init__(config)
+            self._ready_evt = ready_evt
+
+        async def startup(self, sockets=None):
+            await super().startup(sockets)
+            if self._ready_evt:
+                self._ready_evt.set()
 
     config = uvicorn.Config(
         app,
@@ -111,5 +146,5 @@ def run_server(port: int, ready_event: threading.Event = None):
         log_level="error",
         access_log=False,
     )
-    server = uvicorn.Server(config)
+    server = ServerWithReady(config, ready_event)
     server.run()
