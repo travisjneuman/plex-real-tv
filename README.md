@@ -1,12 +1,40 @@
-# plex-real-tv
+<p align="center">
+  <img src="assets/logo.png" alt="plex-real-tv" width="200">
+</p>
 
-Generate [Plex](https://www.plex.tv/) playlists that simulate real TV — round-robin episodes from multiple shows with commercial breaks between them.
+<h1 align="center">plex-real-tv</h1>
 
-Point it at your Plex server, tell it which shows to include, build up a library of commercials over time, and run `rtv generate`. You get a playlist that feels like flipping on a cable channel: an episode of Seinfeld, a commercial, an episode of The Office, another commercial, repeat. One random commercial per break with a configurable no-repeat window so you don't see the same one twice.
+<p align="center">
+  <strong>Generate Plex playlists that simulate real TV — round-robin episodes with vintage commercial breaks.</strong>
+</p>
 
-## v2 — Multi-Playlist + GUI
+<p align="center">
+  <img src="https://img.shields.io/badge/python-3.11+-3776ab?style=flat-square&logo=python&logoColor=white" alt="Python 3.11+">
+  <img src="https://img.shields.io/badge/plex-compatible-e5a00d?style=flat-square&logo=plex&logoColor=white" alt="Plex Compatible">
+  <img src="https://img.shields.io/badge/license-MIT-22c55e?style=flat-square" alt="MIT License">
+  <img src="https://img.shields.io/badge/version-0.2.0-6366f1?style=flat-square" alt="v0.2.0">
+</p>
 
-v2 adds **multiple named playlists**, a **browser-based Web UI**, and a **terminal TUI** — all sharing the same core engine. The CLI remains the canonical interface.
+<p align="center">
+  <a href="#quick-start">Quick Start</a> &middot;
+  <a href="#web-ui">Web UI</a> &middot;
+  <a href="#cli">CLI</a> &middot;
+  <a href="#terminal-tui">TUI</a> &middot;
+  <a href="#how-it-works">How It Works</a> &middot;
+  <a href="#command-reference">Commands</a>
+</p>
+
+---
+
+Point it at your Plex server, tell it which shows to include, build up a library of commercials, and run `rtv generate`. You get a playlist that feels like flipping on a cable channel: an episode of Seinfeld, a commercial break, an episode of The Office, another commercial, repeat. Each commercial is randomly selected with a configurable no-repeat window so you don't see the same one twice.
+
+<p align="center">
+  <img src="screenshots/landing.png" alt="Landing Page" width="700">
+</p>
+
+## Architecture
+
+Three interfaces — one engine. The CLI remains the canonical interface.
 
 ```
 ┌─────────────┐  ┌─────────────┐  ┌─────────────┐
@@ -27,90 +55,39 @@ v2 adds **multiple named playlists**, a **browser-based Web UI**, and a **termin
               └───────────────────┘
 ```
 
-## Screenshots
-
-<!-- Replace placeholder filenames with your actual screenshots -->
-
-<details>
-<summary>Landing Page</summary>
-
-![Landing Page](screenshots/landing.png)
-</details>
-
-<details>
-<summary>Show Pool</summary>
-
-![Show Pool](screenshots/shows.png)
-</details>
-
-<details>
-<summary>Playlist Detail</summary>
-
-![Playlist Detail](screenshots/playlist-detail.png)
-</details>
-
-<details>
-<summary>Generate</summary>
-
-![Generate](screenshots/generate.png)
-</details>
-
-<details>
-<summary>CLI</summary>
-
-![CLI Help](screenshots/cli-help.png)
-</details>
-
 ## Quick Start
 
 ```bash
-# 1. Install
+# Clone and install
+git clone https://github.com/travisjneuman/plex-real-tv.git
+cd plex-real-tv
 pip install -e .
 
-# 2. Create config
+# Create config and add shows
 rtv init
-
-# 3. Add shows to the rotation
 rtv add-show "Seinfeld"
 rtv add-show "The Office"
 
-# 4. Search for and download some commercials (you build your own library)
+# Build your commercial library
 rtv find-commercials -c "80s"
 
-# 5. Generate your playlist
+# Generate and play
 rtv generate
 ```
 
 Open Plex, find the "Real TV" playlist, and hit play.
 
-### Launch the Web UI
-
-```bash
-rtv web
-# Opens http://localhost:8080 in your browser
-```
-
-### Launch the Terminal TUI
-
-```bash
-rtv tui
-# Full-screen terminal dashboard (works over SSH)
-```
-
 ## Prerequisites
 
 - **[Python 3.11+](https://www.python.org/)**
 - **[Plex Media Server](https://www.plex.tv/)** running and accessible over the network
-- **Plex Token** — you need your X-Plex-Token to authenticate. Find it by following [Plex's guide](https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/).
+- **Plex Token** — your X-Plex-Token for authentication. [How to find it](https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/).
 
 ## Installation
 
 ```bash
-# Clone or copy the project
 git clone https://github.com/travisjneuman/plex-real-tv.git
 cd plex-real-tv
-
-# Install (editable mode recommended for development)
 pip install -e .
 
 # Verify
@@ -120,28 +97,174 @@ rtv --help
 
 ### Dependencies
 
-Installed automatically:
+All installed automatically via `pip install -e .`:
 
-**Core:**
-- [`click`](https://click.palletsprojects.com/) — CLI framework
-- [`PlexAPI`](https://github.com/pkkid/python-plexapi) — Plex server communication
-- [`yt-dlp`](https://github.com/yt-dlp/yt-dlp) — Video search and download (used for finding commercials)
-- [`pyyaml`](https://github.com/yaml/pyyaml) — Config file parsing
-- [`pydantic`](https://docs.pydantic.dev/) — Config validation
-- [`rapidfuzz`](https://github.com/rapidfuzz/RapidFuzz) — Fuzzy show name matching
-- [`rich`](https://github.com/Textualize/rich) — Terminal output formatting
+| Category | Package | Purpose |
+|----------|---------|---------|
+| **Core** | [`click`](https://click.palletsprojects.com/) | CLI framework |
+| | [`PlexAPI`](https://github.com/pkkid/python-plexapi) | Plex server communication |
+| | [`yt-dlp`](https://github.com/yt-dlp/yt-dlp) | Commercial search & download |
+| | [`pyyaml`](https://github.com/yaml/pyyaml) | Config file parsing |
+| | [`pydantic`](https://docs.pydantic.dev/) | Config validation |
+| | [`rapidfuzz`](https://github.com/rapidfuzz/RapidFuzz) | Fuzzy show name matching |
+| | [`rich`](https://github.com/Textualize/rich) | Terminal formatting |
+| **Web UI** | [`fastapi`](https://fastapi.tiangolo.com/) | Web framework |
+| | [`uvicorn`](https://www.uvicorn.org/) | ASGI server |
+| | [`jinja2`](https://jinja.palletsprojects.com/) | HTML templates |
+| | [`sse-starlette`](https://github.com/sysid/sse-starlette) | Server-sent events (live progress) |
+| **TUI** | [`textual`](https://textual.textualize.io/) | Terminal UI framework |
+| **Remote** | [`paramiko`](https://www.paramiko.org/) | SSH/SFTP for remote Plex servers |
 
-**Web UI:**
-- [`fastapi`](https://fastapi.tiangolo.com/) — Web framework
-- [`uvicorn`](https://www.uvicorn.org/) — ASGI server
-- [`jinja2`](https://jinja.palletsprojects.com/) — HTML templates
-- [`sse-starlette`](https://github.com/sysid/sse-starlette) — Server-sent events for live progress
+---
 
-**Terminal TUI:**
-- [`textual`](https://textual.textualize.io/) — Terminal UI framework
+## Web UI
 
-**Remote server:**
-- [`paramiko`](https://www.paramiko.org/) — SSH/SFTP for remote Plex servers
+```bash
+rtv web                    # Launch on default port 8080
+rtv web --port 3000        # Custom port
+rtv web --no-open          # Don't auto-open browser
+```
+
+Accessible from any device on your network at `http://<your-ip>:8080`.
+
+> **Note:** The Web UI is served locally by FastAPI, but the **browser** needs internet access to load frontend assets from CDNs: [Tailwind CSS](https://tailwindcss.com/) (styling), [htmx](https://htmx.org/) (interactivity), [htmx SSE extension](https://htmx.org/extensions/server-sent-events/) (live progress), and [Google Fonts](https://fonts.google.com/) (Dela Gothic One + JetBrains Mono). The CLI and TUI work fully offline.
+
+<details>
+<summary><strong>Setup</strong> — Plex connection, server discovery, SSH config</summary>
+<br>
+<img src="screenshots/setup.png" alt="Setup Page" width="700">
+</details>
+
+<details>
+<summary><strong>Shows</strong> — Global show pool, toggle enabled/disabled, scan Plex</summary>
+<br>
+<img src="screenshots/shows.png" alt="Shows Page" width="700">
+</details>
+
+<details>
+<summary><strong>Playlists</strong> — Create/edit playlists, manage shows, configure breaks</summary>
+<br>
+<img src="screenshots/playlists.png" alt="Playlists Page" width="700">
+</details>
+
+<details>
+<summary><strong>Generate</strong> — Generate playlists with live SSE progress & TV static animation</summary>
+<br>
+<img src="screenshots/generate.png" alt="Generate Page" width="700">
+</details>
+
+---
+
+## CLI
+
+### Show Management
+
+```bash
+rtv add-show "the office"                  # Fuzzy match against Plex library
+rtv add-show "Dragon Ball Z" --library "Anime"
+rtv list-shows                             # Show pool with status + membership
+rtv remove-show "Seinfeld"
+rtv enable-show "The Office (US)"
+rtv disable-show "Friends"
+```
+
+### Playlist Management
+
+```bash
+rtv create-playlist "Late Night"
+rtv playlist-add "Late Night" "Seinfeld"
+rtv playlist-remove "Late Night" "Friends"
+rtv list-playlists
+rtv delete-playlist "Late Night"
+rtv set-default "90s Night"
+```
+
+### Generation
+
+```bash
+rtv generate                    # Generate default playlist
+rtv generate "90s Night"        # Specific playlist
+rtv generate -e 50              # Custom episode count
+rtv generate --from-start       # Reset all shows to S01E01
+rtv generate --rescan           # Rescan Plex library first
+rtv generate --from-start --export  # Generate + export CSV
+```
+
+### Commercials
+
+RTV includes optional [yt-dlp](https://github.com/yt-dlp/yt-dlp) integration to search for and download commercials. You can also drop MP4 files directly into your commercial folder. You're responsible for ensuring your use complies with applicable terms of service and copyright law.
+
+```bash
+rtv find-commercials -c "80s"
+rtv download-commercials "https://youtube.com/watch?v=..." -c "90s"
+rtv download-commercials --from-search -c "80s"
+rtv add-category "PSAs" -s "vintage PSA" -s "public service announcement" -w 0.5
+rtv list-commercials
+```
+
+### Diagnostics & Export
+
+```bash
+rtv doctor                      # Full setup check
+rtv preview -e 10               # Dry-run preview
+rtv history                     # Last 5 generations
+rtv status                      # Plex connection + inventory
+rtv export                      # Export playlist to CSV
+rtv export --format json        # Export as JSON
+rtv export -o my_playlist.csv -n "90s Night"
+```
+
+---
+
+## Terminal TUI
+
+```bash
+rtv tui
+```
+
+Full-screen terminal interface with keyboard navigation. Works over SSH for headless servers.
+
+| Key | Screen |
+|-----|--------|
+| `d` | Dashboard — Plex status, stats, last generation |
+| `s` | Shows — DataTable with search/filter, toggle enabled |
+| `p` | Playlists — create, edit, generate, set default |
+| `q` | Quit |
+
+---
+
+## How It Works
+
+### The Round-Robin Algorithm
+
+`rtv generate` builds a playlist by cycling through your shows in order:
+
+```
+Episode 1: Seinfeld S03E12
+  [Commercial: Random 80s clip]
+Episode 2: The Office S01E01
+  [Commercial: Different clip (no repeats)]
+Episode 3: Friends S05E08
+  [Commercial: Yet another unique clip]
+Episode 4: Seinfeld S03E13
+  ...
+```
+
+Each show maintains its own position (season + episode) **per playlist**. Positions are saved after each generation so the next run picks up where you left off. Use `--from-start` to reset all positions to S01E01.
+
+**Show exhaustion:** If a show runs out of episodes, it drops out and the remaining shows continue.
+
+**Independent positions:** Two playlists can share the same show at different positions. "Real TV" might be at Seinfeld S05E03 while "90s Night" is still at S01E01.
+
+### Break Styles
+
+| Style | Behavior |
+|-------|----------|
+| `single` | One random commercial between episodes (default) |
+| `block` | Multiple commercials filling a time window (like a real TV break) |
+| `disabled` | No commercials |
+
+---
 
 ## Configuration
 
@@ -151,11 +274,17 @@ Installed automatically:
 rtv init
 ```
 
-Prompts you for Plex URL, token, library names, and commercial storage path. Creates `config.yaml` in the current directory.
+Prompts for Plex URL, token, library names, and commercial path. Creates `config.yaml` in the current directory.
 
-### Config File Reference (v2)
+### Config Search Paths
 
-`config.yaml` (or `~/.config/rtv/config.yaml`):
+1. `./config.yaml` (current directory)
+2. `~/.config/rtv/config.yaml` (home config)
+
+### Config Reference
+
+<details>
+<summary><code>config.yaml</code> — full example</summary>
 
 ```yaml
 config_version: 2
@@ -171,7 +300,7 @@ plex:
     - "F:\\TV Shows"
     - "K:\\TV Shows"
 
-# Global show pool — add shows here, assign them to playlists
+# Global show pool
 shows:
   - name: "Seinfeld"
     library: "TV Shows"
@@ -191,7 +320,7 @@ playlists:
     breaks:
       enabled: true
       style: single       # single | block | disabled
-      frequency: 1         # insert break every N episodes
+      frequency: 1         # break every N episodes
       min_gap: 50           # no-repeat window for commercials
       block_duration: { min: 30, max: 120 }
     episodes_per_generation: 30
@@ -216,240 +345,50 @@ commercials:
 
 history: []
 ```
-
-### Config Search Paths
-
-RTV looks for `config.yaml` in this order:
-1. Current working directory (`./config.yaml`)
-2. Home config directory (`~/.config/rtv/config.yaml`)
+</details>
 
 ### Config Migration (v1 → v2)
 
-If you have an existing v1 config, RTV auto-migrates on first load:
-- Backs up your config to `config.yaml.v1.bak`
-- Converts shows to the new global pool format
-- Creates a single "Real TV" playlist with your existing positions
-- Sets `config_version: 2`
+Existing v1 configs auto-migrate on first load — backs up to `config.yaml.v1.bak`, converts shows to global pool format, and creates a default playlist.
 
-## Usage
+---
 
-### Web UI
-
-```bash
-rtv web                    # Launch on default port 8080
-rtv web --port 3000        # Custom port
-rtv web --no-browser       # Don't auto-open browser
-```
-
-The Web UI provides:
-- **Setup** — Configure Plex connection, auto-discover servers on your network, SSH settings for remote servers
-- **Shows** — Browse your global show pool, toggle enabled/disabled, scan Plex for new shows
-- **Playlists** — Create/edit/delete playlists, add/remove shows, configure break settings
-- **Generate** — Generate playlists with a live SSE progress bar and TV static animation
-
-Accessible from any device on your network at `http://<your-ip>:8080`.
-
-> **Note:** The Web UI is served locally by FastAPI, but the **browser** needs internet access to load frontend dependencies from CDNs:
-> [Tailwind CSS](https://tailwindcss.com/) (styling), [htmx](https://htmx.org/) (interactivity), [htmx SSE extension](https://htmx.org/extensions/server-sent-events/) (live progress), and [Google Fonts](https://fonts.google.com/) (Dela Gothic One + JetBrains Mono).
-> The CLI and TUI work fully offline.
-
-### Terminal TUI
-
-```bash
-rtv tui
-```
-
-Full-screen terminal interface with keyboard navigation:
-- **`d`** — Dashboard (Plex status, stats, last generation)
-- **`s`** — Shows (DataTable with search/filter, toggle enabled)
-- **`p`** — Playlists (create, edit, generate, set default)
-- **`q`** — Quit
-
-Works over SSH for headless servers.
-
-### Show Management
-
-```bash
-# Add a show — fuzzy matches against your Plex library
-rtv add-show "the office"
-
-# Add from a specific library
-rtv add-show "Dragon Ball Z" --library "Anime"
-
-# See your show pool with enabled/disabled status and playlist membership
-rtv list-shows
-
-# Remove a show from the pool
-rtv remove-show "Seinfeld"
-
-# Toggle enabled/disabled without removing
-rtv enable-show "The Office (US)"
-rtv disable-show "Friends"
-```
-
-### Playlist Management
-
-```bash
-# Create a new playlist
-rtv create-playlist "Late Night"
-
-# Add shows to a playlist (starts at S01E01)
-rtv playlist-add "Late Night" "Seinfeld"
-rtv playlist-add "Late Night" "Friends"
-
-# Remove a show from a playlist
-rtv playlist-remove "Late Night" "Friends"
-
-# List all playlists
-rtv list-playlists
-
-# Delete a playlist
-rtv delete-playlist "Late Night"
-
-# Change the default playlist
-rtv set-default "90s Night"
-```
-
-### Playlist Generation
-
-```bash
-# Generate default playlist
-rtv generate
-
-# Generate a specific playlist
-rtv generate "90s Night"
-
-# Custom episode count
-rtv generate -e 50
-
-# Start all shows from S01E01
-rtv generate --from-start
-
-# Rescan Plex commercial library before generating
-rtv generate --from-start --rescan
-
-# Auto-export playlist to CSV after generating
-rtv generate --from-start --export
-```
-
-### Commercial Management
-
-RTV includes optional [yt-dlp](https://github.com/yt-dlp/yt-dlp) integration to help you search for and download commercials to build your own library. You're responsible for ensuring your use complies with applicable terms of service and copyright law. You can also add commercial clips from any source — just drop MP4 files into your commercial folder.
-
-```bash
-# Search for commercials (uses yt-dlp)
-rtv find-commercials -c "80s"
-
-# Download a specific video by URL
-rtv download-commercials "https://youtube.com/watch?v=..." -c "90s"
-
-# Download from your last search results
-rtv download-commercials --from-search -c "80s"
-
-# Add a named category with custom search terms
-rtv add-category "PSAs" -s "vintage PSA" -s "public service announcement" -w 0.5
-
-# See what commercials you have
-rtv list-commercials
-```
-
-### Diagnostics
-
-```bash
-# Check your entire setup
-rtv doctor
-
-# Preview what a playlist would look like (no changes made)
-rtv preview -e 10
-
-# See your last 5 generated playlists
-rtv history
-
-# Test Plex connection and see inventory
-rtv status
-```
-
-### Playlist Export
-
-```bash
-# Export current Plex playlist to CSV (default)
-rtv export
-
-# Export as JSON
-rtv export --format json
-
-# Custom output file and playlist name
-rtv export -o my_playlist.csv -n "90s Night"
-```
-
-## Commercial Library Setup in Plex
+## Commercial Library Setup
 
 Commercials need their own Plex library so they can be included in playlists alongside TV episodes.
 
-### Step 1: Create the Commercial Folder
-
-Create a folder on your server to store commercial MP4s:
+### 1. Create the folder
 
 ```
 D:\Media\Commercials\
-├── 80s\
+├── 80s/
 │   ├── Coca Cola 1985.mp4
-│   ├── Nintendo NES Commercial.mp4
-│   └── ...
-├── 90s\
-│   ├── Got Milk 1993.mp4
-│   └── ...
-├── PSAs\
+│   └── Nintendo NES Commercial.mp4
+├── 90s/
+│   └── Got Milk 1993.mp4
+├── PSAs/
 │   └── This Is Your Brain On Drugs.mp4
-└── toys\
+└── toys/
     └── Easy Bake Oven.mp4
 ```
 
-Each subfolder becomes a "category" that RTV uses for weighted selection during playlist generation.
+Each subfolder becomes a category for weighted selection during generation.
 
-### Step 2: Add the Library in Plex
+### 2. Add in Plex
 
-1. Open Plex → Settings → Libraries → Add Library
-2. Choose type: **Movies** (not TV Shows — commercials are single files, not series)
-3. Name it exactly what your config says (default: `RealTV Commercials`)
-4. Point it to your commercial folder (e.g., `D:\Media\Commercials`)
-5. Click Add Library
+1. Settings → Libraries → Add Library
+2. Type: **Movies** (not TV Shows — commercials are single files)
+3. Name: `RealTV Commercials` (must match config)
+4. Point to your commercial folder
 
-### Step 3: Hide from Home Screen (Optional)
+### 3. Hide from home (optional)
 
-You probably don't want commercials showing up on your Plex home screen:
+Settings → Libraries → RealTV Commercials → gear icon → uncheck "Include in dashboard"
 
-1. Go to Settings → Libraries
-2. Find "RealTV Commercials"
-3. Click the gear icon
-4. Uncheck "Include in dashboard"
-
-### Step 4: Let Plex Scan
-
-Plex needs to scan and index the commercial files. This happens automatically, but you can force it:
-
-1. Go to the RealTV Commercials library
-2. Click the "..." menu → Scan Library Files
-
-After scanning, `rtv status` should show the commercial count.
-
-## Break Styles
-
-Each playlist can use a different commercial break style:
-
-| Style | Behavior |
-|-------|----------|
-| `single` | One random commercial between episodes (default) |
-| `block` | Multiple commercials filling a time window (like a real TV break) |
-| `disabled` | No commercials at all |
-
-Configure via CLI (`rtv create-playlist`), Web UI, or directly in `config.yaml`.
+---
 
 ## Multi-Drive Setup
 
-If your TV shows are spread across multiple drives (common for large collections), configure multiple TV show paths:
-
-**In config.yaml:**
 ```yaml
 plex:
   tv_show_paths:
@@ -459,17 +398,12 @@ plex:
     - "K:\\TV Shows"
 ```
 
-When you run `rtv add-show`, it searches all configured libraries automatically.
+`rtv add-show` searches all configured libraries automatically.
 
 ## Remote Server (SSH)
 
-When plex-real-tv runs on a different machine than your Plex server, enable SSH for remote file management:
+For when plex-real-tv runs on a different machine than your Plex server:
 
-```bash
-rtv web  # Use the Setup page to configure SSH
-```
-
-Or in `config.yaml`:
 ```yaml
 ssh:
   enabled: true
@@ -480,117 +414,89 @@ ssh:
   remote_commercial_path: "F:\\Commercials"
 ```
 
-SSH enables remote commercial directory scanning, file uploads via SFTP, and remote command execution.
+Or configure via the Web UI Setup page. SSH enables remote commercial directory scanning, SFTP uploads, and remote command execution.
 
-## How It Works
-
-### The Round-Robin Algorithm
-
-When you run `rtv generate`, RTV builds a playlist by cycling through your shows in order:
-
-```
-Episode 1: Seinfeld S03E12
-  [Commercial: Random 70s/80s/90s/2000s/2010s clip]
-Episode 2: The Office S01E01
-  [Commercial: Different random clip (no repeats)]
-Episode 3: Friends S05E08
-  [Commercial: Yet another unique clip]
-Episode 4: Seinfeld S03E13
-  ...
-```
-
-Each show maintains its own position (season + episode) **per playlist**. After generating, positions are saved so the next generation picks up where you left off.
-
-### Show Exhaustion
-
-If a show runs out of episodes (reached the last episode of the last season), it drops out of the rotation and the remaining shows continue.
-
-### Independent Positions
-
-Two playlists can share the same show with different positions. "Real TV" might be at Seinfeld S05E03 while "90s Night" is still at S01E01.
-
-### Position Tracking
-
-Show positions are stored per playlist in `config.yaml`:
-
-```yaml
-playlists:
-  - name: "Real TV"
-    shows:
-      - { name: "Seinfeld", current_season: 5, current_episode: 3 }
-```
-
-Use `--from-start` to reset all positions to S01E01.
+---
 
 ## Command Reference
 
 | Command | Description |
 |---------|-------------|
 | `rtv init` | Create config.yaml interactively |
-| `rtv status` | Test Plex connection, show inventory summary |
-| `rtv doctor` | Run diagnostic checks on your setup |
-| **Show Management** | |
-| `rtv add-show NAME` | Add a show to the global pool |
-| `rtv remove-show NAME` | Remove a show from the pool |
-| `rtv list-shows` | Show pool with enabled/disabled status |
+| `rtv status` | Test Plex connection, show inventory |
+| `rtv doctor` | Run diagnostic checks |
+| **Shows** | |
+| `rtv add-show NAME` | Add show to global pool |
+| `rtv remove-show NAME` | Remove show |
+| `rtv list-shows` | List pool with status |
 | `rtv enable-show NAME` | Enable a show |
-| `rtv disable-show NAME` | Disable a show (skipped in generation) |
-| **Playlist Management** | |
-| `rtv create-playlist NAME` | Create a new playlist |
-| `rtv delete-playlist NAME` | Delete a playlist |
-| `rtv list-playlists` | Summary of all playlists |
-| `rtv playlist-add PLAYLIST SHOW` | Add show to playlist at S01E01 |
-| `rtv playlist-remove PLAYLIST SHOW` | Remove show from playlist |
-| `rtv set-default NAME` | Set the default playlist |
+| `rtv disable-show NAME` | Disable a show |
+| **Playlists** | |
+| `rtv create-playlist NAME` | Create playlist |
+| `rtv delete-playlist NAME` | Delete playlist |
+| `rtv list-playlists` | List all playlists |
+| `rtv playlist-add PLAYLIST SHOW` | Add show at S01E01 |
+| `rtv playlist-remove PLAYLIST SHOW` | Remove show |
+| `rtv set-default NAME` | Set default playlist |
 | **Generation** | |
-| `rtv generate [NAME]` | Generate a Plex playlist |
-| `rtv generate --from-start` | Reset all shows to S01E01 |
-| `rtv generate --rescan` | Rescan Plex library before generating |
-| `rtv generate --export` | Export playlist to CSV after generating |
-| `rtv preview [NAME]` | Dry-run preview of playlist |
-| `rtv export` | Export playlist to CSV or JSON |
-| `rtv history` | Show last 5 generated playlists |
+| `rtv generate [NAME]` | Generate Plex playlist |
+| `rtv generate --from-start` | Reset to S01E01 |
+| `rtv generate --rescan` | Rescan Plex first |
+| `rtv generate --export` | Export after generating |
+| `rtv preview [NAME]` | Dry-run preview |
+| `rtv export` | Export to CSV/JSON |
+| `rtv history` | Last 5 generations |
 | **Commercials** | |
-| `rtv find-commercials -c CATEGORY` | Search YouTube for commercials |
-| `rtv download-commercials URL` | Download a commercial by URL |
-| `rtv add-category NAME` | Add a commercial category |
-| `rtv list-commercials` | Show commercial inventory |
+| `rtv find-commercials -c CAT` | Search for commercials |
+| `rtv download-commercials URL` | Download by URL |
+| `rtv add-category NAME` | Add category |
+| `rtv list-commercials` | Show inventory |
 | **GUI** | |
-| `rtv web` | Launch browser-based Web UI |
-| `rtv tui` | Launch terminal TUI |
+| `rtv web` | Launch Web UI |
+| `rtv tui` | Launch Terminal TUI |
+
+---
 
 ## Troubleshooting
 
-### "Could not connect to Plex"
+<details>
+<summary><strong>"Could not connect to Plex"</strong></summary>
 
 1. Is Plex Media Server running?
 2. Is the URL correct? Check with `rtv doctor`
 3. Is the token valid? Tokens can expire — regenerate from Plex settings
 4. Firewall blocking port 32400?
+</details>
 
-### "No match found" when adding a show
+<details>
+<summary><strong>"No match found" when adding a show</strong></summary>
 
 - Try the exact name as it appears in Plex
 - Check which libraries are configured: `rtv status`
 - Use `--library` to search a specific library
+</details>
 
-### "No commercials found"
+<details>
+<summary><strong>"No commercials found"</strong></summary>
 
 1. Have you downloaded any? `rtv find-commercials -c "80s"`
-2. Is the commercial path correct in config? `rtv doctor`
+2. Is the commercial path correct? `rtv doctor`
 3. Did you create the Plex library and scan it?
 4. Commercial files must be `.mp4` format
+</details>
 
-### "rtv: command not found"
+<details>
+<summary><strong>"rtv: command not found"</strong></summary>
 
 Make sure you ran `pip install -e .` and that your Python Scripts directory is in PATH:
 ```bash
 pip show plex-real-tv
 ```
-
-### Run the diagnostic
+</details>
 
 `rtv doctor` checks everything: Plex connection, libraries, shows, commercial path, yt-dlp availability.
+
+---
 
 ## Disclaimer
 
@@ -598,4 +504,4 @@ This tool generates playlists from media you already own in your Plex library. I
 
 ## License
 
-MIT
+[MIT](LICENSE)

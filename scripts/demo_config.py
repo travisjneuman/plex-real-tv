@@ -117,15 +117,17 @@ DEMO_CONFIG = {
     },
     "history": [
         {
-            "playlist": "Real TV",
-            "episodes": 30,
-            "commercials": 29,
+            "playlist_name": "Real TV",
+            "episode_count": 30,
+            "shows": ["Seinfeld", "The Office (US)", "Friends", "The Simpsons", "Cheers", "The X-Files"],
+            "runtime_secs": 45720.0,
             "timestamp": "2026-02-15T20:30:00",
         },
         {
-            "playlist": "Real TV",
-            "episodes": 30,
-            "commercials": 28,
+            "playlist_name": "Real TV",
+            "episode_count": 30,
+            "shows": ["Seinfeld", "The Office (US)", "Friends", "The Simpsons", "Cheers", "The X-Files"],
+            "runtime_secs": 44850.0,
             "timestamp": "2026-02-10T19:15:00",
         },
     ],
