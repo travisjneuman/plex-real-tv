@@ -168,7 +168,7 @@ else:
         upx=True,
         upx_exclude=[],
         runtime_tmpdir=None,
-        console=False,
+        console=True,  # Enable console for debugging
         disable_windowed_traceback=False,
         argv_emulation=False,
         target_arch=None,

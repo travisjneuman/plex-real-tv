@@ -148,8 +148,8 @@ def run_server(port: int, ready_event: threading.Event | None = None):
         app,
         host="127.0.0.1",
         port=port,
-        log_level="error",
-        access_log=False,
+        log_level="debug",
+        access_log=True,
     )
     server = ServerWithReady(config, ready_event)
     server.run()
