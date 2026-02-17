@@ -5,11 +5,10 @@ on:
     types: [published]
   workflow_dispatch:
     inputs:
-      create_release:
-        description: 'Create a draft release with artifacts'
-        required: false
-        default: 'false'
-        type: boolean
+      tag:
+        description: 'Tag to upload assets to (e.g., v0.3.0)'
+        required: true
+        type: string
 
 env:
   PYTHON_VERSION: '3.12'
@@ -108,10 +107,10 @@ jobs:
           path: dist/RealTV
           retention-days: 30
 
-  create-release:
+create-release:
     needs: [build-windows, build-macos, build-linux]
     runs-on: ubuntu-latest
-    if: github.event_name == 'release'
+    if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
     permissions:
       contents: write
     steps:
@@ -147,6 +146,7 @@ jobs:
       - name: Upload release assets
         uses: softprops/action-gh-release@v1
         with:
+          tag: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.event.release.tag_name }}
           files: |
             artifacts/RealTV-Windows.zip
             artifacts/RealTV-macOS.zip
