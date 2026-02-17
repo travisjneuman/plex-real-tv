@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Request, Form
+from fastapi import APIRouter, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
+from starlette.requests import Request
 
 from rtv.config import (
     PlaylistDefinition,
