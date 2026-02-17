@@ -27,6 +27,40 @@ v2 adds **multiple named playlists**, a **browser-based Web UI**, and a **termin
               └───────────────────┘
 ```
 
+## Screenshots
+
+<!-- Replace placeholder filenames with your actual screenshots -->
+
+<details>
+<summary>Landing Page</summary>
+
+![Landing Page](screenshots/landing.png)
+</details>
+
+<details>
+<summary>Show Pool</summary>
+
+![Show Pool](screenshots/shows.png)
+</details>
+
+<details>
+<summary>Playlist Detail</summary>
+
+![Playlist Detail](screenshots/playlist-detail.png)
+</details>
+
+<details>
+<summary>Generate</summary>
+
+![Generate](screenshots/generate.png)
+</details>
+
+<details>
+<summary>CLI</summary>
+
+![CLI Help](screenshots/cli-help.png)
+</details>
+
 ## Quick Start
 
 ```bash
@@ -214,6 +248,10 @@ The Web UI provides:
 - **Generate** — Generate playlists with a live SSE progress bar and TV static animation
 
 Accessible from any device on your network at `http://<your-ip>:8080`.
+
+> **Note:** The Web UI is served locally by FastAPI, but the **browser** needs internet access to load frontend dependencies from CDNs:
+> [Tailwind CSS](https://tailwindcss.com/) (styling), [htmx](https://htmx.org/) (interactivity), [htmx SSE extension](https://htmx.org/extensions/server-sent-events/) (live progress), and [Google Fonts](https://fonts.google.com/) (Dela Gothic One + JetBrains Mono).
+> The CLI and TUI work fully offline.
 
 ### Terminal TUI
 

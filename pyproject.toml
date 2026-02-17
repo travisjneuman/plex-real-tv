@@ -37,11 +37,15 @@ dev = [
 [project.scripts]
 rtv = "rtv.cli:cli"
 
+[project.urls]
+Repository = "https://github.com/travisjneuman/plex-real-tv"
+Issues = "https://github.com/travisjneuman/plex-real-tv/issues"
+
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.setuptools.package-data]
-rtv = ["web/templates/*.html", "web/static/*.css", "tui/*.tcss"]
+rtv = ["web/templates/*.html", "web/static/*.css", "web/static/*.svg", "tui/*.tcss"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
