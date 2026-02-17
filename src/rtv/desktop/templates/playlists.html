@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block title %}Playlists{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+    <div class="page-header">
+        <h1 class="font-display text-2xl text-rtv-accent tracking-wide">Playlists</h1>
+        <p class="text-rtv-muted text-sm mt-1">
+            {{ playlists | length }} playlist{{ "s" if playlists | length != 1 else "" }} configured.
+        </p>
+        <p class="text-rtv-muted text-xs mt-1">
+            Each playlist is a separate Plex playlist with its own show lineup, episode positions, and commercial break settings.
+            You can have multiple playlists running different combinations of shows &mdash; for example, a "90s Night" with only 90s sitcoms
+            and a "Real TV" with everything. Each playlist tracks where you left off independently.
+        </p>
+    </div>
+
+    <!-- Toast messages -->
+    {% if message %}
+    <div class="toast toast-success">{{ message }}</div>
+    {% endif %}
+    {% if error %}
+    <div class="toast toast-error">{{ error }}</div>
+    {% endif %}
+
+    <!-- Create playlist form -->
+    <section class="card">
+        <h2 class="card-title mb-4">Create New Playlist</h2>
+        <form method="post" action="/playlists/create" class="space-y-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="form-group">
+                    <label for="name" class="form-label">Playlist Name</label>
+                    <input type="text" name="name" id="name"
+                           placeholder="e.g. Late Night"
+                           class="form-input" required>
+                    <span class="text-rtv-muted text-xs">This becomes the playlist name in Plex.</span>
+                </div>
+                <div class="form-group">
+                    <label for="episodes_per_generation" class="form-label">Max Episodes</label>
+                    <input type="number" name="episodes_per_generation" id="episodes_per_generation"
+                           value="0" min="0" max="500"
+                           class="form-input">
+                    <span class="text-rtv-muted text-xs">
+                        Maximum episodes per generation. Set to 0 for all available episodes (cycles through every show until they run out).
+                    </span>
+                </div>
+                <div class="form-group">
+                    <label for="break_style" class="form-label">Break Style</label>
+                    <select name="break_style" id="break_style" class="form-input">
+                        <option value="single">Single</option>
+                        <option value="block">Block</option>
+                        <option value="disabled">Disabled</option>
+                    </select>
+                    <span class="text-rtv-muted text-xs">
+                        Single = one random commercial between episodes.
+                        Block = multiple commercials filling a time window (like a real TV break).
+                        Disabled = no commercials at all.
+                    </span>
+                </div>
+                <div class="form-group">
+                    <label for="sort_by" class="form-label">Sort Order</label>
+                    <select name="sort_by" id="sort_by" class="form-input">
+                        <option value="premiere_year">Oldest First</option>
+                        <option value="premiere_year_desc">Newest First</option>
+                        <option value="alphabetical">Alphabetical</option>
+                    </select>
+                    <span class="text-rtv-muted text-xs">
+                        Controls which show's episode plays first in each round-robin cycle.
+                        "Oldest First" means the show that premiered earliest plays first.
+                    </span>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="frequency" class="form-label">Break Frequency</label>
+                <input type="number" name="frequency" id="frequency"
+                       value="1" min="1" max="50"
+                       class="form-input sm:w-32">
+                <span class="text-rtv-muted text-xs">
+                    Insert a commercial break every N episodes. Set to 1 for a break after every episode (most realistic),
+                    or higher to space them out.
+                </span>
+            </div>
+            <button type="submit" class="btn btn-accent">Create Playlist</button>
+        </form>
+    </section>
+
+    <!-- Playlist list -->
+    {% if playlists %}
+    <section class="grid gap-4">
+        {% for pl in playlists %}
+        <a href="/playlists/{{ pl.name }}" class="card card-hover group">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                    <div class="playlist-icon">
+                        <svg viewBox="0 0 24 24" fill="none" class="w-6 h-6">
+                            <path d="M4 6h16M4 10h16M4 14h10M18 14v6m-3-3h6"
+                                  stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="font-medium text-rtv-text group-hover:text-rtv-accent transition-colors">
+                            {{ pl.name }}
+                            {% if pl.name == default_playlist %}
+                            <span class="badge badge-accent ml-2">default</span>
+                            {% endif %}
+                        </h3>
+                        <p class="text-rtv-muted text-sm">
+                            {{ pl.shows | length }} show{{ "s" if pl.shows | length != 1 else "" }}
+                            &middot; {% if pl.episodes_per_generation > 0 %}{{ pl.episodes_per_generation }} eps{% else %}all episodes{% endif %}
+                            &middot; {{ pl.breaks.style if pl.breaks.enabled else "no breaks" }}
+                            &middot; {% if pl.sort_by == "premiere_year" %}oldest first{% elif pl.sort_by == "premiere_year_desc" %}newest first{% else %}{{ pl.sort_by }}{% endif %}
+                        </p>
+                    </div>
+                </div>
+                <svg class="w-5 h-5 text-rtv-muted group-hover:text-rtv-accent transition-colors"
+                     viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd"
+                          d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z"
+                          clip-rule="evenodd"/>
+                </svg>
+            </div>
+        </a>
+        {% endfor %}
+    </section>
+    {% else %}
+    <section class="card card-dim text-center py-12">
+        <p class="text-rtv-muted text-lg">No playlists yet.</p>
+        <p class="text-rtv-muted text-sm mt-2">Create one above to get started.</p>
+    </section>
+    {% endif %}
+</div>
+{% endblock %}

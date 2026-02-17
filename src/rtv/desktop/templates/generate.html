@@ -1,0 +1,263 @@
+{% extends "base.html" %}
+{% block title %}Generate{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+    <div class="page-header">
+        <h1 class="font-display text-2xl text-rtv-accent tracking-wide">Generate Playlist</h1>
+        <p class="text-rtv-muted text-sm mt-1">
+            Build a round-robin playlist on your Plex server. Episodes from each show play in order,
+            cycling through all shows with commercial breaks in between &mdash; just like real TV.
+        </p>
+    </div>
+
+    <!-- Generation form -->
+    <section class="card" id="generate-form">
+        <div class="space-y-4">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div class="form-group">
+                    <label for="playlist_name" class="form-label">Playlist</label>
+                    <select id="playlist_name" class="form-input">
+                        {% for pl in playlists %}
+                        <option value="{{ pl.name }}"
+                                {% if pl.name == request.query_params.get('playlist', default_playlist) %}selected{% endif %}>
+                            {{ pl.name }} ({{ pl.shows | length }} shows)
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <span class="text-rtv-muted text-xs">Choose which playlist to generate. Each playlist has its own show lineup and settings.</span>
+                </div>
+                <div class="form-group">
+                    <label for="episode_count" class="form-label">Episode Count Override</label>
+                    <input type="number" id="episode_count" value="0" min="0" max="500"
+                           class="form-input" placeholder="0 = use playlist setting">
+                    <span class="text-rtv-muted text-xs">
+                        Override the playlist's max episodes for this generation only.
+                        Leave at 0 to use the playlist's configured setting.
+                    </span>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">&nbsp;</label>
+                    <label class="flex items-center gap-3 cursor-pointer h-10">
+                        <input type="checkbox" id="from_start" class="form-checkbox">
+                        <span class="text-sm">Reset to S01E01</span>
+                    </label>
+                    <span class="text-rtv-muted text-xs">
+                        Start every show from Season 1, Episode 1 instead of picking up where you left off.
+                    </span>
+                </div>
+            </div>
+
+            <button type="button" id="start-btn" class="btn btn-lg btn-generate w-full"
+                    onclick="startGeneration()">
+                Generate Playlist
+            </button>
+        </div>
+    </section>
+
+    <!-- Progress area (hidden initially) -->
+    <section class="card hidden" id="progress-section">
+        <div class="space-y-6">
+            <!-- Status message -->
+            <div class="flex items-center gap-3">
+                <div class="pulse-dot" id="pulse-dot"></div>
+                <span id="progress-message" class="text-rtv-muted">Initializing...</span>
+            </div>
+
+            <!-- Progress bar -->
+            <div class="progress-track">
+                <div class="progress-fill" id="progress-bar" style="width: 0%"></div>
+            </div>
+            <div class="flex justify-between text-sm text-rtv-muted">
+                <span id="progress-current">0</span>
+                <span id="progress-percent">0%</span>
+                <span id="progress-total">0</span>
+            </div>
+
+            <!-- TV static animation -->
+            <div class="tv-static" id="tv-static">
+                <canvas id="static-canvas" width="320" height="48"></canvas>
+            </div>
+        </div>
+    </section>
+
+    <!-- Results area (hidden initially) -->
+    <section class="card hidden" id="results-section">
+        <div class="card-header">
+            <h2 class="card-title text-rtv-success">Generation Complete</h2>
+        </div>
+        <div id="results-content" class="space-y-4 mt-4"></div>
+    </section>
+
+    <!-- Error area (hidden initially) -->
+    <section class="hidden" id="error-section">
+        <div class="toast toast-error" id="error-message"></div>
+    </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let eventSource = null;
+let staticAnimFrame = null;
+let sseTimeout = null;
+
+function startGeneration() {
+    const playlistName = document.getElementById('playlist_name').value;
+    const episodeCount = parseInt(document.getElementById('episode_count').value) || 0;
+    const fromStart = document.getElementById('from_start').checked;
+
+    // Show progress, hide others
+    document.getElementById('generate-form').classList.add('opacity-50');
+    document.getElementById('start-btn').disabled = true;
+    document.getElementById('start-btn').textContent = 'Generating...';
+    document.getElementById('progress-section').classList.remove('hidden');
+    document.getElementById('results-section').classList.add('hidden');
+    document.getElementById('error-section').classList.add('hidden');
+
+    startStaticAnimation();
+
+    const params = new URLSearchParams({
+        playlist_name: playlistName,
+        episode_count: episodeCount.toString(),
+        from_start: fromStart.toString(),
+    });
+
+    eventSource = new EventSource(`/generate/stream?${params}`);
+
+    // Timeout: if no events arrive within 30 seconds, show an error
+    sseTimeout = setTimeout(function() {
+        if (eventSource && eventSource.readyState !== EventSource.CLOSED) {
+            eventSource.close();
+            stopStaticAnimation();
+            showError('No response from Plex after 30 seconds. Check that your Plex server is reachable.');
+        }
+    }, 30000);
+
+    eventSource.addEventListener('progress', function(e) {
+        // Reset timeout on each progress event
+        clearTimeout(sseTimeout);
+        sseTimeout = setTimeout(function() {
+            if (eventSource && eventSource.readyState !== EventSource.CLOSED) {
+                eventSource.close();
+                stopStaticAnimation();
+                showError('Generation stalled — no progress for 30 seconds. Check the server console.');
+            }
+        }, 30000);
+        const data = JSON.parse(e.data);
+        document.getElementById('progress-message').textContent = data.message;
+        document.getElementById('progress-bar').style.width = data.percent + '%';
+        document.getElementById('progress-current').textContent = data.current;
+        document.getElementById('progress-total').textContent = data.total;
+        document.getElementById('progress-percent').textContent = data.percent + '%';
+    });
+
+    eventSource.addEventListener('complete', function(e) {
+        clearTimeout(sseTimeout);
+        eventSource.close();
+        stopStaticAnimation();
+        const data = JSON.parse(e.data);
+        showResults(data);
+    });
+
+    eventSource.addEventListener('error', function(e) {
+        clearTimeout(sseTimeout);
+        if (e.data) {
+            const data = JSON.parse(e.data);
+            showError(data.message);
+        } else {
+            showError('Connection lost. Check the server console.');
+        }
+        if (eventSource) eventSource.close();
+        stopStaticAnimation();
+    });
+
+    eventSource.onerror = function() {
+        // SSE built-in error (disconnect)
+        if (eventSource.readyState === EventSource.CLOSED) {
+            stopStaticAnimation();
+        }
+    };
+}
+
+function showResults(data) {
+    document.getElementById('progress-section').classList.add('hidden');
+    document.getElementById('results-section').classList.remove('hidden');
+    document.getElementById('generate-form').classList.remove('opacity-50');
+    document.getElementById('start-btn').disabled = false;
+    document.getElementById('start-btn').textContent = 'Generate Playlist';
+
+    let html = '';
+
+    // Summary stats
+    html += `<div class="grid grid-cols-2 sm:grid-cols-4 gap-4">`;
+    html += statCard('Total Items', data.total_items);
+    html += statCard('Runtime', data.runtime);
+    html += statCard('Commercial Blocks', data.commercial_blocks);
+    html += statCard('Commercial Time', data.commercial_minutes + ' min');
+    html += `</div>`;
+
+    // Episodes by show
+    html += `<h3 class="font-display text-lg text-rtv-accent mt-4">Episodes by Show</h3>`;
+    html += `<table class="rtv-table"><thead><tr><th>Show</th><th class="text-center">Episodes</th><th class="text-center">Next Position</th></tr></thead><tbody>`;
+    for (const [show, count] of Object.entries(data.episodes_by_show)) {
+        const pos = data.show_positions[show] || '?';
+        html += `<tr><td class="font-medium">${show}</td><td class="text-center">${count}</td><td class="text-center"><span class="badge badge-muted font-mono">${pos}</span></td></tr>`;
+    }
+    html += `</tbody></table>`;
+
+    // Dropped shows
+    if (data.dropped_shows && data.dropped_shows.length > 0) {
+        html += `<div class="toast toast-warning">Shows exhausted: ${data.dropped_shows.join(', ')}</div>`;
+    }
+
+    // Success message
+    html += `<div class="toast toast-success">Playlist "${data.playlist_name}" is ready in Plex!</div>`;
+
+    document.getElementById('results-content').innerHTML = html;
+}
+
+function statCard(label, value) {
+    return `<div class="stat-card"><div class="stat-value">${value}</div><div class="stat-label">${label}</div></div>`;
+}
+
+function showError(message) {
+    document.getElementById('progress-section').classList.add('hidden');
+    document.getElementById('error-section').classList.remove('hidden');
+    document.getElementById('error-message').textContent = message;
+    document.getElementById('generate-form').classList.remove('opacity-50');
+    document.getElementById('start-btn').disabled = false;
+    document.getElementById('start-btn').textContent = 'Generate Playlist';
+}
+
+/* TV static noise animation */
+function startStaticAnimation() {
+    const canvas = document.getElementById('static-canvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width;
+    const h = canvas.height;
+
+    function drawStatic() {
+        const imgData = ctx.createImageData(w, h);
+        for (let i = 0; i < imgData.data.length; i += 4) {
+            const v = Math.random() * 40;
+            imgData.data[i] = v;
+            imgData.data[i+1] = v + Math.random() * 10;
+            imgData.data[i+2] = v + Math.random() * 5;
+            imgData.data[i+3] = 60;
+        }
+        ctx.putImageData(imgData, 0, 0);
+        staticAnimFrame = requestAnimationFrame(drawStatic);
+    }
+    drawStatic();
+}
+
+function stopStaticAnimation() {
+    if (staticAnimFrame) {
+        cancelAnimationFrame(staticAnimFrame);
+        staticAnimFrame = null;
+    }
+}
+</script>
+{% endblock %}

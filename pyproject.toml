@@ -33,9 +33,14 @@ dev = [
     "httpx>=0.25",
     "pytest-asyncio>=0.23",
 ]
+desktop = [
+    "pywebview>=5.0",
+    "pyinstaller>=6.0",
+]
 
 [project.scripts]
 rtv = "rtv.cli:cli"
+rtv-desktop = "rtv.desktop.app:main"
 
 [project.urls]
 Repository = "https://github.com/travisjneuman/plex-real-tv"
@@ -45,7 +50,18 @@ Issues = "https://github.com/travisjneuman/plex-real-tv/issues"
 where = ["src"]
 
 [tool.setuptools.package-data]
-rtv = ["web/templates/*.html", "web/static/*.css", "web/static/*.svg", "tui/*.tcss"]
+rtv = [
+    "web/templates/*.html",
+    "web/static/*.css",
+    "web/static/*.svg",
+    "tui/*.tcss",
+    "desktop/templates/*.html",
+    "desktop/static/*.css",
+    "desktop/static/*.svg",
+    "desktop/static/vendor/*.js",
+    "desktop/static/fonts/*.woff2",
+    "desktop/static/fonts/*.ttf",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

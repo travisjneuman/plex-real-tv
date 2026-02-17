@@ -1,0 +1,219 @@
+{% extends "base.html" %}
+{% block title %}{{ playlist.name }}{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+    <!-- Header -->
+    <div class="page-header flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+            <a href="/playlists" class="text-rtv-muted text-sm hover:text-rtv-accent transition-colors">&larr; All Playlists</a>
+            <h1 class="font-display text-2xl text-rtv-accent tracking-wide mt-1">
+                {{ playlist.name }}
+                {% if is_default %}
+                <span class="badge badge-accent ml-2">default</span>
+                {% endif %}
+            </h1>
+            <p class="text-rtv-muted text-sm mt-1">
+                {{ playlist.shows | length }} show{{ "s" if playlist.shows | length != 1 else "" }}
+                &middot; {% if playlist.episodes_per_generation > 0 %}{{ playlist.episodes_per_generation }} episodes per generation{% else %}all available episodes{% endif %}
+            </p>
+        </div>
+        <div class="flex gap-2">
+            {% if not is_default %}
+            <form method="post" action="/playlists/{{ playlist.name }}/set-default" class="inline">
+                <button type="submit" class="btn btn-sm btn-outline">Set as Default</button>
+            </form>
+            {% endif %}
+            <form method="post" action="/playlists/{{ playlist.name }}/delete"
+                  onsubmit="return confirm('Delete playlist {{ playlist.name }}?')" class="inline">
+                <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast messages -->
+    {% if message %}
+    <div class="toast toast-success">{{ message }}</div>
+    {% endif %}
+    {% if error %}
+    <div class="toast toast-error">{{ error }}</div>
+    {% endif %}
+
+    <!-- Playlist Settings -->
+    <section class="card">
+        <h2 class="card-title mb-4">Settings</h2>
+        <form method="post" action="/playlists/{{ playlist.name }}/update" class="space-y-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div class="form-group">
+                    <label for="episodes_per_generation" class="form-label">Max Episodes per Generation</label>
+                    <input type="number" name="episodes_per_generation" id="episodes_per_generation"
+                           value="{{ playlist.episodes_per_generation }}"
+                           min="0" max="500" class="form-input">
+                    <span class="text-rtv-muted text-xs">
+                        Caps how many episodes are added each time you generate. Set to 0 for unlimited &mdash;
+                        the playlist will cycle through every show until all episodes are exhausted.
+                    </span>
+                </div>
+                <div class="form-group">
+                    <label for="sort_by" class="form-label">Sort Order</label>
+                    <select name="sort_by" id="sort_by" class="form-input">
+                        <option value="premiere_year" {% if playlist.sort_by == "premiere_year" %}selected{% endif %}>Oldest First</option>
+                        <option value="premiere_year_desc" {% if playlist.sort_by == "premiere_year_desc" %}selected{% endif %}>Newest First</option>
+                        <option value="alphabetical" {% if playlist.sort_by == "alphabetical" %}selected{% endif %}>Alphabetical</option>
+                    </select>
+                    <span class="text-rtv-muted text-xs">
+                        Determines which show's episode plays first in each round-robin cycle.
+                        "Oldest First" means the show that premiered earliest (e.g. Seinfeld 1989) gets its episode before newer shows.
+                    </span>
+                </div>
+                <div class="form-group">
+                    <label for="break_style" class="form-label">Break Style</label>
+                    <select name="break_style" id="break_style" class="form-input">
+                        <option value="single" {% if playlist.breaks.enabled and playlist.breaks.style == "single" %}selected{% endif %}>Single</option>
+                        <option value="block" {% if playlist.breaks.enabled and playlist.breaks.style == "block" %}selected{% endif %}>Block</option>
+                        <option value="disabled" {% if not playlist.breaks.enabled %}selected{% endif %}>Disabled</option>
+                    </select>
+                    <span class="text-rtv-muted text-xs">
+                        Single = one random commercial clip between episodes.
+                        Block = multiple commercials filling a time window, like a real TV commercial break.
+                        Disabled = no commercials at all, just back-to-back episodes.
+                    </span>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="form-group">
+                    <label for="frequency" class="form-label">Break Frequency</label>
+                    <input type="number" name="frequency" id="frequency"
+                           value="{{ playlist.breaks.frequency }}"
+                           min="1" max="50" class="form-input">
+                    <span class="text-rtv-muted text-xs">
+                        Insert a commercial break every N episodes. 1 = after every episode (most realistic).
+                        2 = a break after every other episode, etc.
+                    </span>
+                </div>
+                <div class="form-group">
+                    <label for="min_gap" class="form-label">No-Repeat Window</label>
+                    <input type="number" name="min_gap" id="min_gap"
+                           value="{{ playlist.breaks.min_gap }}"
+                           min="1" class="form-input">
+                    <span class="text-rtv-muted text-xs">
+                        How many other commercials must play before the same one can repeat.
+                        Higher = more variety but requires a larger commercial library.
+                    </span>
+                </div>
+                <div class="form-group">
+                    <label for="block_min" class="form-label">Block Min (seconds)</label>
+                    <input type="number" name="block_min" id="block_min"
+                           value="{{ playlist.breaks.block_duration.min }}"
+                           min="1" class="form-input">
+                    <span class="text-rtv-muted text-xs">
+                        Minimum duration of a commercial block in seconds.
+                        Only applies when Break Style is set to "Block".
+                    </span>
+                </div>
+                <div class="form-group">
+                    <label for="block_max" class="form-label">Block Max (seconds)</label>
+                    <input type="number" name="block_max" id="block_max"
+                           value="{{ playlist.breaks.block_duration.max }}"
+                           min="1" class="form-input">
+                    <span class="text-rtv-muted text-xs">
+                        Maximum duration of a commercial block in seconds.
+                        Only applies when Break Style is set to "Block".
+                    </span>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-accent">Save Settings</button>
+        </form>
+    </section>
+
+    <!-- Shows in Playlist -->
+    <section class="card">
+        <div class="card-header">
+            <h2 class="card-title">Shows in Playlist</h2>
+            <span class="text-rtv-muted text-sm">{{ playlist.shows | length }} show{{ "s" if playlist.shows | length != 1 else "" }}</span>
+        </div>
+
+        <p class="text-rtv-muted text-xs mt-2 mb-4">
+            These shows will be cycled through round-robin style when you generate this playlist.
+            The "Position" column shows where each show will pick up from next time (season and episode).
+        </p>
+
+        {% if playlist.shows %}
+        <table class="rtv-table">
+            <thead>
+                <tr>
+                    <th class="w-10">#</th>
+                    <th>Show</th>
+                    <th class="w-32 text-center">Position</th>
+                    <th class="w-20 text-center">Remove</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ps in playlist.shows %}
+                <tr>
+                    <td class="text-rtv-muted">{{ loop.index }}</td>
+                    <td class="font-medium">{{ ps.name }}</td>
+                    <td class="text-center">
+                        <span class="badge badge-muted font-mono">
+                            S{{ "%02d" | format(ps.current_season) }}E{{ "%02d" | format(ps.current_episode) }}
+                        </span>
+                    </td>
+                    <td class="text-center">
+                        <form method="post" action="/playlists/{{ playlist.name }}/remove-show/{{ ps.name }}" class="inline">
+                            <button type="submit" class="btn btn-sm btn-danger"
+                                    title="Remove from playlist">&times;</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="text-rtv-muted text-center py-8">No shows in this playlist yet. Add shows from the pool below.</p>
+        {% endif %}
+    </section>
+
+    <!-- Add show to playlist -->
+    {% if available_shows %}
+    <section class="card">
+        <div class="flex items-center justify-between mb-2">
+            <h2 class="card-title">Add Show to Playlist</h2>
+            <form method="post" action="/playlists/{{ playlist.name }}/add-all-shows"
+                  onsubmit="return confirm('Add all {{ available_shows | length }} pool shows to this playlist?')" class="inline">
+                <button type="submit" class="btn btn-sm btn-outline">Add All ({{ available_shows | length }})</button>
+            </form>
+        </div>
+        <p class="text-rtv-muted text-xs mb-4">
+            Select a show from your global pool to add to this playlist. It will start at Season 1, Episode 1.
+            Only shows from the Show Pool page appear here &mdash; add new shows there first.
+        </p>
+        <form method="post" action="/playlists/{{ playlist.name }}/add-show" class="flex flex-col sm:flex-row gap-3">
+            <select name="show_name" class="form-input flex-1" required>
+                <option value="" disabled selected>Select a show...</option>
+                {% for show in available_shows %}
+                <option value="{{ show.name }}">
+                    {{ show.name }}{% if show.year %} ({{ show.year }}){% endif %}
+                    {% if not show.enabled %} [disabled]{% endif %}
+                </option>
+                {% endfor %}
+            </select>
+            <button type="submit" class="btn btn-accent">Add to Playlist</button>
+        </form>
+    </section>
+    {% else %}
+    <section class="card card-dim text-center py-6">
+        <p class="text-rtv-muted">All global shows are already in this playlist.</p>
+    </section>
+    {% endif %}
+
+    <!-- Quick generate link -->
+    <div class="text-center">
+        <a href="/generate?playlist={{ playlist.name }}"
+           class="btn btn-lg btn-generate">
+            Generate "{{ playlist.name }}"
+        </a>
+    </div>
+</div>
+{% endblock %}
