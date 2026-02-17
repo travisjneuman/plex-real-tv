@@ -15,7 +15,7 @@ def create_ico():
         print("Skipping .ico creation.")
         return False
     
-    project_root = Path(__file__).parent.parent
+    project_root = Path(__file__).parent.parent.parent
     logo_png = project_root / "assets" / "logo.png"
     logo_ico = project_root / "assets" / "logo.ico"
     
