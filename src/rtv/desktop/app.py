@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import sys
 import threading
+import traceback
 from pathlib import Path
 
 import webview
@@ -24,14 +25,32 @@ def main():
 
     port = find_free_port()
     ready = threading.Event()
+    error_holder = {"error": None}
+
+    def run_server_wrapper():
+        try:
+            run_server(port, ready)
+        except Exception as e:
+            error_holder["error"] = traceback.format_exc()
+            ready.set()
 
     server_thread = threading.Thread(
-        target=run_server,
-        args=(port, ready),
+        target=run_server_wrapper,
         daemon=True,
     )
     server_thread.start()
     ready.wait()
+
+    if error_holder["error"]:
+        print(f"Server error:\n{error_holder['error']}", file=sys.stderr)
+        webview.create_window(
+            title="RealTV - Error",
+            html=f"<h1>Server Error</h1><pre>{error_holder['error']}</pre>",
+            width=800,
+            height=600,
+        )
+        webview.start()
+        return
 
     window = webview.create_window(
         title="RealTV - Plex TV Simulator",
@@ -49,7 +68,7 @@ def main():
     window.events.closing += on_closing
 
     webview.start(
-        debug=False,
+        debug=True,
         http_server=False,
     )
 

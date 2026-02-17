@@ -50,9 +50,12 @@ def create_desktop_app():
         description="Desktop application for plex-real-tv",
     )
 
+    print(f"[DEBUG] BASE_PATH: {BASE_PATH}")
+    print(f"[DEBUG] STATIC_DIR: {STATIC_DIR} (exists: {STATIC_DIR.exists()})")
+    print(f"[DEBUG] TEMPLATES_DIR: {TEMPLATES_DIR} (exists: {TEMPLATES_DIR.exists()})")
+    print(f"[DEBUG] WEB_TEMPLATES_DIR: {WEB_TEMPLATES_DIR} (exists: {WEB_TEMPLATES_DIR.exists()})")
+
     # Mount static directories
-    # Desktop static (fonts, vendor JS) - mounted at /static first
-    # Then web static overlays on top (app.css, favicon)
     if STATIC_DIR.exists():
         app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static-desktop")
     
@@ -62,6 +65,8 @@ def create_desktop_app():
         template_dirs.append(str(TEMPLATES_DIR))
     if WEB_TEMPLATES_DIR.exists():
         template_dirs.append(str(WEB_TEMPLATES_DIR))
+    
+    print(f"[DEBUG] Template dirs: {template_dirs}")
     
     loader = ChoiceLoader([FileSystemLoader(d) for d in template_dirs]) if template_dirs else None
     templates = Jinja2Templates(directory=template_dirs[0] if template_dirs else ".", loader=loader)
