@@ -2,8 +2,6 @@
   <img src="assets/logo.png" alt="plex-real-tv" width="200">
 </p>
 
-<h1 align="center">plex-real-tv</h1>
-
 <p align="center">
   <strong>Turn your Plex library into a TV channel — episodes cycle through your shows in order with commercial breaks in between.</strong>
 </p>
