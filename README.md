@@ -10,16 +10,16 @@
   <img src="https://img.shields.io/badge/python-3.11+-3776ab?style=flat-square&logo=python&logoColor=white" alt="Python 3.11+">
   <img src="https://img.shields.io/badge/plex-compatible-e5a00d?style=flat-square&logo=plex&logoColor=white" alt="Plex Compatible">
   <img src="https://img.shields.io/badge/license-MIT-22c55e?style=flat-square" alt="MIT License">
-  <img src="https://img.shields.io/badge/v0.2.0-6366f1?style=flat-square" alt="v0.2.0">
+  <img src="https://img.shields.io/badge/v0.3.0-6366f1?style=flat-square" alt="v0.3.0">
 </p>
 
 <p align="center">
   <a href="#features">Features</a> &middot;
   <a href="#quick-start">Quick Start</a> &middot;
+  <a href="#portable-desktop-app">Portable App</a> &middot;
   <a href="#web-ui">Web UI</a> &middot;
   <a href="#cli">CLI</a> &middot;
-  <a href="#how-it-works">How It Works</a> &middot;
-  <a href="#command-reference">Commands</a>
+  <a href="#how-it-works">How It Works</a>
 </p>
 
 ---
@@ -34,7 +34,8 @@ Pick the shows you want, add some commercials if you like, and run `rtv generate
 
 ## Features
 
-- **Three ways to use it** — browser-based Web UI, full-screen terminal TUI, or the CLI
+- **Four ways to use it** — portable desktop app, browser-based Web UI, full-screen terminal TUI, or the CLI
+- **Portable desktop app** — standalone executable for Windows, macOS, and Linux with no Python installation required
 - **Automatic episode ordering** — cycles through your shows oldest-to-newest, one episode at a time, picking up where you left off
 - **Commercial breaks** — one random clip per break, or blocks that fill a time window like real TV. Configurable no-repeat window so you don't see the same one twice
 - **Multiple playlists** — create "Real TV", "90s Night", "Anime Block", each with their own shows and positions
@@ -104,6 +105,56 @@ pip install .
 
 ---
 
+## Portable Desktop App
+
+Download a standalone executable — no Python installation required. The portable app bundles everything needed and works fully offline.
+
+### Download
+
+Get the latest release from [GitHub Releases](https://github.com/travisjneuman/plex-real-tv/releases):
+
+| Platform | File | Size |
+|----------|------|------|
+| Windows | `RealTV-Windows.zip` | ~30 MB |
+| macOS | `RealTV-macOS.zip` | ~60 MB |
+| Linux | `RealTV-Linux.tar.gz` | ~50 MB |
+
+### Installation
+
+1. Download the archive for your platform
+2. Extract it anywhere
+3. Run the executable:
+   - **Windows**: Double-click `RealTV.exe`
+   - **macOS**: Open `RealTV.app` (may need to right-click → Open on first run)
+   - **Linux**: Run `./RealTV` from terminal
+
+### Features
+
+- **Fully offline** — all fonts, styling, and JavaScript bundled locally
+- **No installation** — just download and run
+- **Same UI as Web** — identical interface and functionality
+- **Auto-discovery** — finds Plex servers on your network automatically
+
+### Configuration
+
+The portable app stores configuration in your system's AppData folder:
+
+| Platform | Config Location |
+|----------|-----------------|
+| Windows | `%APPDATA%\RealTV\config.yaml` |
+| macOS | `~/Library/Application Support/RealTV/config.yaml` |
+| Linux | `~/.config/rtv/config.yaml` |
+
+> [!TIP]
+> To transfer your settings to another computer, copy the `config.yaml` file to the same location on the new machine.
+
+### Limitations
+
+- Commercial search/download requires internet (yt-dlp)
+- First run on macOS may require: System Settings → Privacy & Security → "Open Anyway"
+
+---
+
 ## Web UI
 
 ```bash
@@ -115,7 +166,9 @@ rtv web --no-open          # Don't auto-open browser
 Accessible from any device on your network at `http://<your-ip>:8080`.
 
 > [!NOTE]
-> The Web UI is served from your machine, but your **browser** needs internet access to load styling and interactivity from CDNs: [Tailwind CSS](https://tailwindcss.com/), [htmx](https://htmx.org/), and [Google Fonts](https://fonts.google.com/). The CLI and TUI work fully offline.
+> The Web UI is served from your machine, but your **browser** needs internet access to load styling and interactivity from CDNs: [Tailwind CSS](https://tailwindcss.com/), [htmx](https://htmx.org/), and [Google Fonts](https://fonts.google.com/).
+>
+> **For fully offline use**, download the [Portable Desktop App](#portable-desktop-app) which bundles all assets locally.
 
 <p align="center">
   <img src="screenshots/shows.png" alt="Show Pool" width="700">
@@ -276,7 +329,10 @@ Three interfaces share one core engine:
 `rtv init` walks you through setup interactively. All settings are stored in `config.yaml`.
 
 > [!NOTE]
-> RTV looks for `config.yaml` in your current directory first, then `~/.config/rtv/config.yaml`. Run commands from the same folder where you ran `rtv init`.
+> RTV looks for `config.yaml` in your current directory first, then in your system's AppData folder. For the portable desktop app, config is stored in:
+> - **Windows**: `%APPDATA%\RealTV\config.yaml`
+> - **macOS**: `~/Library/Application Support/RealTV/config.yaml`
+> - **Linux**: `~/.config/rtv/config.yaml`
 
 <details>
 <summary><strong>Full config reference</strong></summary>
@@ -542,6 +598,7 @@ source ~/.bashrc
 | **Interfaces** | |
 | `rtv web` | Launch Web UI |
 | `rtv tui` | Launch Terminal TUI |
+| `rtv-desktop` | Launch desktop app (requires `[desktop]` install) |
 
 ---
 
