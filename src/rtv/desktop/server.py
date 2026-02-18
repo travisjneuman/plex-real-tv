@@ -39,21 +39,17 @@ def find_free_port() -> int:
 
 def create_desktop_app():
     """Create FastAPI app with offline templates and static files."""
-    from fastapi import FastAPI, Request
+    from fastapi import FastAPI
     from fastapi.responses import HTMLResponse
-    from fastapi.staticfiles import StaticFiles
-    from fastapi.templating import Jinja2Templates
+    from starlette.staticfiles import StaticFiles
+    from starlette.templating import Jinja2Templates
+    from starlette.requests import Request
     from jinja2 import FileSystemLoader, ChoiceLoader
 
     app = FastAPI(
         title="RealTV Desktop",
         description="Desktop application for plex-real-tv",
     )
-
-    print(f"[DEBUG] BASE_PATH: {BASE_PATH}")
-    print(f"[DEBUG] STATIC_DIR: {STATIC_DIR} (exists: {STATIC_DIR.exists()})")
-    print(f"[DEBUG] TEMPLATES_DIR: {TEMPLATES_DIR} (exists: {TEMPLATES_DIR.exists()})")
-    print(f"[DEBUG] WEB_TEMPLATES_DIR: {WEB_TEMPLATES_DIR} (exists: {WEB_TEMPLATES_DIR.exists()})")
 
     # Mount static directories
     if STATIC_DIR.exists():
@@ -66,22 +62,9 @@ def create_desktop_app():
     if WEB_TEMPLATES_DIR.exists():
         template_dirs.append(str(WEB_TEMPLATES_DIR))
     
-    print(f"[DEBUG] Template dirs: {template_dirs}")
-    
     loader = ChoiceLoader([FileSystemLoader(d) for d in template_dirs]) if template_dirs else None
     templates = Jinja2Templates(directory=template_dirs[0] if template_dirs else ".", loader=loader)
     app.state.templates = templates
-
-    # Import and include routers from web UI
-    from rtv.web.routes.setup import router as setup_router
-    from rtv.web.routes.shows import router as shows_router
-    from rtv.web.routes.playlists import router as playlists_router
-    from rtv.web.routes.generate import router as generate_router
-
-    app.include_router(setup_router)
-    app.include_router(shows_router)
-    app.include_router(playlists_router)
-    app.include_router(generate_router)
 
     def _load_config_safe():
         """Load config without raising on missing file."""
@@ -92,8 +75,8 @@ def create_desktop_app():
             from rtv.config import RTVConfig
             return RTVConfig(), False
 
-    @app.get("/", response_class=HTMLResponse)
-    async def home(request: Request):
+    # Define home route using app.add_route with raw Starlette handler
+    async def home(request: Request) -> HTMLResponse:
         config, config_exists = _load_config_safe()
         show_count = len(config.shows)
         playlist_count = len(config.playlists)
@@ -108,6 +91,9 @@ def create_desktop_app():
         if hasattr(config, "history") and config.history:
             last_generation = config.history[-1]
 
+        request.state.show_count = show_count
+        request.state.playlist_count = playlist_count
+
         return templates.TemplateResponse("home.html", {
             "request": request,
             "config_exists": config_exists,
@@ -118,12 +104,26 @@ def create_desktop_app():
             "last_generation": last_generation,
         })
 
+    # Use Starlette's add_route to bypass FastAPI's dependency injection
+    app.add_route("/", home, methods=["GET"])
+
     @app.middleware("http")
     async def inject_nav_counts(request: Request, call_next):
         config, _ = _load_config_safe()
         request.state.show_count = len(config.shows)
         request.state.playlist_count = len(config.playlists)
         return await call_next(request)
+
+    # Import and include routers from web UI
+    from rtv.web.routes.setup import router as setup_router
+    from rtv.web.routes.shows import router as shows_router
+    from rtv.web.routes.playlists import router as playlists_router
+    from rtv.web.routes.generate import router as generate_router
+
+    app.include_router(setup_router)
+    app.include_router(shows_router)
+    app.include_router(playlists_router)
+    app.include_router(generate_router)
 
     return app
 
@@ -148,8 +148,8 @@ def run_server(port: int, ready_event: threading.Event | None = None):
         app,
         host="127.0.0.1",
         port=port,
-        log_level="debug",
-        access_log=True,
+        log_level="warning",
+        access_log=False,
     )
     server = ServerWithReady(config, ready_event)
     server.run()

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import shutil
 from pathlib import Path
 
@@ -10,10 +11,32 @@ from pydantic import BaseModel, Field, model_validator
 
 
 CONFIG_FILENAME = "config.yaml"
+
+
+def _get_appdata_config_path() -> Path:
+    """Get the platform-specific AppData config path."""
+    if os.name == "nt":  # Windows
+        appdata = os.environ.get("APPDATA", "")
+        if appdata:
+            return Path(appdata) / "RealTV" / CONFIG_FILENAME
+    elif os.name == "posix":
+        import platform
+        system = platform.system()
+        if system == "Darwin":  # macOS
+            return Path.home() / "Library" / "Application Support" / "RealTV" / CONFIG_FILENAME
+    # Fallback for Linux and others
+    return Path.home() / ".config" / "rtv" / CONFIG_FILENAME
+
+
 CONFIG_SEARCH_PATHS = [
     Path.cwd() / CONFIG_FILENAME,
-    Path.home() / ".config" / "rtv" / CONFIG_FILENAME,
+    _get_appdata_config_path(),
 ]
+
+
+def get_default_config_path() -> Path:
+    """Get the default path for saving new configs (AppData location)."""
+    return _get_appdata_config_path()
 
 
 class BlockDuration(BaseModel):
@@ -388,7 +411,7 @@ def save_config(config: RTVConfig, path: Path | None = None) -> Path:
     if path is None:
         path = find_config_path()
     if path is None:
-        path = CONFIG_SEARCH_PATHS[0]
+        path = get_default_config_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     data = config.model_dump()
     with open(path, "w", encoding="utf-8") as f:

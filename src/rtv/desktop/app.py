@@ -68,7 +68,7 @@ def main():
     window.events.closing += on_closing
 
     webview.start(
-        debug=True,
+        debug=False,
         http_server=False,
     )
 
