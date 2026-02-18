@@ -154,7 +154,7 @@ def main() -> None:
     print("  3. http://localhost:9090/playlists/Real%20TV — Playlist detail")
     print("  4. http://localhost:9090/generate   — Generate form")
     print()
-    print("Save screenshots to: screenshots/")
+    print("Save screenshots to: assets/screenshots/")
     print("When done, delete the demo config: rm config.yaml")
 
 

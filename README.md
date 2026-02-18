@@ -27,7 +27,7 @@
 Pick the shows you want, add some commercials if you like, and run `rtv generate`. You get a Plex playlist that plays like a cable channel — an episode of Seinfeld, a vintage commercial, an episode of The Office, another commercial, and so on. Each show picks up where it left off, so the next time you generate you get the next episodes in order.
 
 <p align="center">
-  <img src="screenshots/landing.png" alt="plex-real-tv Web UI" width="700">
+  <img src="assets/screenshots/landing.png" alt="plex-real-tv Web UI" width="700">
 </p>
 
 ---
@@ -171,25 +171,25 @@ Accessible from any device on your network at `http://<your-ip>:8080`.
 > **For fully offline use**, download the [Portable Desktop App](#portable-desktop-app) which bundles all assets locally.
 
 <p align="center">
-  <img src="screenshots/shows.png" alt="Show Pool" width="700">
+  <img src="assets/screenshots/shows.png" alt="Show Pool" width="700">
 </p>
 
 <details>
 <summary><strong>Setup page</strong> — Plex connection, server discovery, SSH</summary>
 <br>
-<p align="center"><img src="screenshots/setup.png" alt="Setup Page" width="700"></p>
+<p align="center"><img src="assets/screenshots/setup.png" alt="Setup Page" width="700"></p>
 </details>
 
 <details>
 <summary><strong>Playlists page</strong> — create/edit playlists, manage shows, configure breaks</summary>
 <br>
-<p align="center"><img src="screenshots/playlists.png" alt="Playlists Page" width="700"></p>
+<p align="center"><img src="assets/screenshots/playlists.png" alt="Playlists Page" width="700"></p>
 </details>
 
 <details>
 <summary><strong>Generate page</strong> — live progress bar with TV static animation</summary>
 <br>
-<p align="center"><img src="screenshots/generate.png" alt="Generate Page" width="700"></p>
+<p align="center"><img src="assets/screenshots/generate.png" alt="Generate Page" width="700"></p>
 </details>
 
 ---
