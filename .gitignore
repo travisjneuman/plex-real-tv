@@ -7,3 +7,6 @@ build/
 config.yaml
 Plex Real TV*.yaml
 *.v1.bak
+*.mkv
+*.mp4
+*.avi
