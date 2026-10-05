@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <strong>Turn your Plex library into a TV channel — episodes cycle through your shows in order with commercial breaks in between.</strong>
+  <strong>Turn your Plex library into a TV channel. Episodes cycle through your shows in order with commercial breaks in between.</strong>
 </p>
 
 <p align="center">
@@ -24,7 +24,7 @@
 
 ---
 
-Pick the shows you want, add some commercials if you like, and run `rtv generate`. You get a Plex playlist that plays like a cable channel — an episode of Seinfeld, a vintage commercial, an episode of The Office, another commercial, and so on. Each show picks up where it left off, so the next time you generate you get the next episodes in order.
+Pick the shows you want, add some commercials if you like, and run `rtv generate`. You get a Plex playlist that plays like a cable channel: an episode of Seinfeld, a vintage commercial, an episode of The Office, another commercial, and so on. Each show picks up where it left off, so the next time you generate you get the next episodes in order.
 
 <p align="center">
   <img src="assets/screenshots/landing.png" alt="plex-real-tv Web UI" width="700">
@@ -34,15 +34,15 @@ Pick the shows you want, add some commercials if you like, and run `rtv generate
 
 ## Features
 
-- **Four ways to use it** — portable desktop app, browser-based Web UI, full-screen terminal TUI, or the CLI
-- **Portable desktop app** — standalone executable for Windows, macOS, and Linux with no Python installation required
-- **Automatic episode ordering** — cycles through your shows oldest-to-newest, one episode at a time, picking up where you left off
-- **Commercial breaks** — one random clip per break, or blocks that fill a time window like real TV. Configurable no-repeat window so you don't see the same one twice
-- **Multiple playlists** — create "Real TV", "90s Night", "Anime Block", each with their own shows and positions
-- **Fuzzy matching** — type `rtv add-show "the office"` and it finds "The Office (US)" in your Plex library
-- **Commercial library builder** — search and download clips with built-in yt-dlp integration, or just drop MP4s in a folder
-- **Remote server support** — SSH/SFTP for managing commercials on a separate Plex server
-- **Works over SSH** — the terminal TUI runs on headless servers
+- **Four ways to use it**: portable desktop app, browser-based Web UI, full-screen terminal TUI, or the CLI
+- **Portable desktop app**: standalone executable for Windows, macOS, and Linux with no Python installation required
+- **Automatic episode ordering**: cycles through your shows oldest-to-newest, one episode at a time, picking up where you left off
+- **Commercial breaks**: one random clip per break, or blocks that fill a time window like real TV. Configurable no-repeat window so you don't see the same one twice
+- **Multiple playlists**: create "Real TV", "90s Night", "Anime Block", each with their own shows and positions
+- **Fuzzy matching**: type `rtv add-show "the office"` and it finds "The Office (US)" in your Plex library
+- **Commercial library builder**: search and download clips with built-in yt-dlp integration, or just drop MP4s in a folder
+- **Remote server support**: SSH/SFTP for managing commercials on a separate Plex server
+- **Works over SSH**: the terminal TUI runs on headless servers
 
 ---
 
@@ -50,9 +50,9 @@ Pick the shows you want, add some commercials if you like, and run `rtv generate
 
 ### What you need
 
-- **[Python 3.11 or newer](https://www.python.org/downloads/)** — check with `python --version` (or `python3 --version` on macOS/Linux)
+- **[Python 3.11 or newer](https://www.python.org/downloads/)**: check with `python --version` (or `python3 --version` on macOS/Linux)
 - **[Plex Media Server](https://www.plex.tv/)** running and accessible on your network
-- **Your Plex token** — [how to find it](https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/)
+- **Your Plex token**: [how to find it](https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/)
 
 ### Install and run
 
@@ -84,7 +84,7 @@ Open Plex, go to **Playlists** in the sidebar, find **"Real TV"**, and hit play.
 > **Don't have git?** You can also [download the ZIP](https://github.com/travisjneuman/plex-real-tv/archive/refs/heads/master.zip), extract it, and run `pip install .` from inside the folder.
 
 <details>
-<summary><strong>For developers</strong> — editable install</summary>
+<summary><strong>For developers</strong>: editable install</summary>
 <br>
 
 If you plan to modify the source code, install in editable mode:
@@ -107,7 +107,7 @@ pip install .
 
 ## Portable Desktop App
 
-Download a standalone executable — no Python installation required. The portable app bundles everything needed and works fully offline.
+Download a standalone executable. No Python installation required. The portable app bundles everything needed and works fully offline.
 
 ### Download
 
@@ -130,10 +130,10 @@ Get the latest release from [GitHub Releases](https://github.com/travisjneuman/p
 
 ### Features
 
-- **Fully offline** — all fonts, styling, and JavaScript bundled locally
-- **No installation** — just download and run
-- **Same UI as Web** — identical interface and functionality
-- **Auto-discovery** — finds Plex servers on your network automatically
+- **Fully offline**: all fonts, styling, and JavaScript bundled locally
+- **No installation**: just download and run
+- **Same UI as Web**: identical interface and functionality
+- **Auto-discovery**: finds Plex servers on your network automatically
 
 ### Configuration
 
@@ -175,19 +175,19 @@ Accessible from any device on your network at `http://<your-ip>:8080`.
 </p>
 
 <details>
-<summary><strong>Setup page</strong> — Plex connection, server discovery, SSH</summary>
+<summary><strong>Setup page</strong>: Plex connection, server discovery, SSH</summary>
 <br>
 <p align="center"><img src="assets/screenshots/setup.png" alt="Setup Page" width="700"></p>
 </details>
 
 <details>
-<summary><strong>Playlists page</strong> — create/edit playlists, manage shows, configure breaks</summary>
+<summary><strong>Playlists page</strong>: create/edit playlists, manage shows, configure breaks</summary>
 <br>
 <p align="center"><img src="assets/screenshots/playlists.png" alt="Playlists Page" width="700"></p>
 </details>
 
 <details>
-<summary><strong>Generate page</strong> — live progress bar with TV static animation</summary>
+<summary><strong>Generate page</strong>: live progress bar with TV static animation</summary>
 <br>
 <p align="center"><img src="assets/screenshots/generate.png" alt="Generate Page" width="700"></p>
 </details>
@@ -262,9 +262,9 @@ Full-screen terminal interface. Works over SSH for headless servers.
 
 | Key | Screen |
 |-----|--------|
-| <kbd>d</kbd> | Dashboard — Plex status, stats, last generation |
-| <kbd>s</kbd> | Shows — searchable table, toggle enabled/disabled |
-| <kbd>p</kbd> | Playlists — create, edit, generate, set default |
+| <kbd>d</kbd> | Dashboard: Plex status, stats, last generation |
+| <kbd>s</kbd> | Shows: searchable table, toggle enabled/disabled |
+| <kbd>p</kbd> | Playlists: create, edit, generate, set default |
 | <kbd>q</kbd> | Quit |
 
 ---
@@ -293,32 +293,32 @@ Each playlist can use a different commercial break style:
 | Style | What it does |
 |-------|-------------|
 | `single` | One random commercial between episodes (default) |
-| `block` | Multiple commercials filling a time window — like a real TV break |
+| `block` | Multiple commercials filling a time window, like a real TV break |
 | `disabled` | No commercials at all |
 
 <details>
 <summary><strong>Architecture</strong></summary>
 <br>
 
-Four interfaces share one core engine. The three below are shown; the portable desktop app (`src/rtv/desktop`) serves its own local pages in a native pywebview window on the same core:
+Four interfaces share one core engine. The portable desktop app (`src/rtv/desktop`) runs a local FastAPI server with bundled offline assets, reuses the Web UI routes, and shows them in a native pywebview window.
 
 ```
-┌─────────────┐  ┌─────────────┐  ┌─────────────┐
-│   Web UI    │  │ Terminal TUI│  │     CLI     │
-│ FastAPI +   │  │  Textual    │  │   Click     │
-│ htmx/Jinja2 │  │             │  │             │
-└──────┬──────┘  └──────┬──────┘  └──────┬──────┘
-       │                │                │
-       └────────────────┼────────────────┘
-                        │
-              ┌─────────┴─────────┐
-              │    Core Layer     │
-              │  config.py        │
-              │  playlist.py      │
-              │  plex_client.py   │
-              │  commercial.py    │
-              │  matcher.py       │
-              └───────────────────┘
+┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐
+│ Desktop App │  │   Web UI    │  │ Terminal TUI│  │     CLI     │
+│ pywebview + │  │ FastAPI +   │  │  Textual    │  │   Click     │
+│ FastAPI     │  │ htmx/Jinja2 │  │             │  │             │
+└──────┬──────┘  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘
+       │                │                │                │
+       └────────────────┴───────┬────────┴────────────────┘
+                                │
+                      ┌─────────┴─────────┐
+                      │    Core Layer     │
+                      │  config.py        │
+                      │  playlist.py      │
+                      │  plex_client.py   │
+                      │  commercial.py    │
+                      │  matcher.py       │
+                      └───────────────────┘
 ```
 </details>
 
@@ -406,7 +406,7 @@ Commercials are optional but fun. You need two things: MP4 files in a folder, an
 
 ### 1. Create the folder
 
-Organize by decade, theme, or however you like — each subfolder becomes a category:
+Organize by decade, theme, or however you like. Each subfolder becomes a category:
 
 ```
 D:\Media\Commercials\
@@ -422,7 +422,7 @@ D:\Media\Commercials\
 ### 2. Add the library in Plex
 
 1. Plex → Settings → Libraries → **Add Library**
-2. Type: **Movies** (not TV Shows — commercials are single files)
+2. Type: **Movies** (not TV Shows, since commercials are single files)
 3. Name it `RealTV Commercials` (must match your config)
 4. Point it to your commercial folder
 5. Let Plex scan the library
@@ -447,7 +447,7 @@ Or just drop any MP4 files into your commercial folder and let Plex scan.
 ## Advanced
 
 <details>
-<summary><strong>Multi-drive setup</strong> — TV shows spread across multiple drives</summary>
+<summary><strong>Multi-drive setup</strong>: TV shows spread across multiple drives</summary>
 
 ```yaml
 plex:
@@ -462,7 +462,7 @@ plex:
 </details>
 
 <details>
-<summary><strong>Remote server (SSH)</strong> — Plex on a different machine</summary>
+<summary><strong>Remote server (SSH)</strong>: Plex on a different machine</summary>
 
 Configure via the Web UI Setup page, or in `config.yaml`:
 
@@ -480,7 +480,7 @@ SSH enables remote commercial directory scanning, SFTP file uploads, and remote 
 </details>
 
 <details>
-<summary><strong>Dependencies</strong> — what gets installed</summary>
+<summary><strong>Dependencies</strong>: what gets installed</summary>
 <br>
 
 All installed automatically via `pip install .`:
@@ -514,7 +514,7 @@ The Web UI also loads from CDN (browser-side, not installed):
 
 1. Is Plex Media Server running?
 2. Is the URL correct? Try `http://localhost:32400` if Plex is on the same machine, or `http://<server-ip>:32400` for a remote server
-3. Is the token valid? Tokens can expire — [get a new one](https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/)
+3. Is the token valid? Tokens can expire. [Get a new one](https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/)
 4. Firewall blocking port 32400?
 5. Run `rtv doctor` for a full diagnostic
 </details>
@@ -604,7 +604,7 @@ source ~/.bashrc
 
 ## Disclaimer
 
-This tool generates playlists from media you already own in your Plex library. It does not distribute, stream, or share any media content. Commercial clips are sourced and stored locally by the user — RTV does not include or distribute any media files.
+This tool generates playlists from media you already own in your Plex library. It does not distribute, stream, or share any media content. Commercial clips are sourced and stored locally by the user. RTV does not include or distribute any media files.
 
 ## License
 
