@@ -1,0 +1,42 @@
+{
+  "$schema": "https://raw.githubusercontent.com/travisjneuman/travisjneuman/main/showcase/schema/showcase-v1.json",
+  "id": "plex-real-tv",
+  "name": "Plex Real TV",
+  "status": "active",
+  "statusNote": null,
+  "summary": "Cable-TV style playlists for a Plex library, with commercial breaks between shows, across CLI, web, TUI, and desktop interfaces.",
+  "visibility": "public",
+  "links": {
+    "repo": "https://github.com/travisjneuman/plex-real-tv"
+  },
+  "stack": [
+    "Python",
+    "FastAPI",
+    "Textual",
+    "PlexAPI"
+  ],
+  "metrics": [
+    {
+      "value": "4",
+      "label": "Interfaces",
+      "source": "manual: src/rtv/cli.py, web/, tui/, desktop/",
+      "round": "exact",
+      "asOf": "2026-10-05"
+    },
+    {
+      "value": "3.11+",
+      "label": "Python",
+      "source": "grep requires-python pyproject.toml",
+      "round": "exact",
+      "asOf": "2026-10-05"
+    },
+    {
+      "value": "0.3",
+      "label": "Release",
+      "source": "grep '^version' pyproject.toml (0.3.0)",
+      "round": "exact",
+      "asOf": "2026-10-05"
+    }
+  ],
+  "updated": "2026-10-05"
+}
