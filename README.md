@@ -300,7 +300,7 @@ Each playlist can use a different commercial break style:
 <summary><strong>Architecture</strong></summary>
 <br>
 
-Three interfaces share one core engine:
+Four interfaces share one core engine. The three below are shown; the portable desktop app (`src/rtv/desktop`) serves its own local pages in a native pywebview window on the same core:
 
 ```
 ┌─────────────┐  ┌─────────────┐  ┌─────────────┐
