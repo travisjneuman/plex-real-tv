@@ -17,26 +17,29 @@
   ],
   "metrics": [
     {
+      "key": "interfaces",
       "value": "4",
       "label": "Interfaces",
-      "source": "manual: src/rtv/cli.py, web/, tui/, desktop/",
+      "source": "manual: github.com/travisjneuman/plex-real-tv at bdec088bac31f9815f8141ef5b6db278b886aecc; reviewed actual entrypoints src/rtv/cli.py (Click cli), src/rtv/web/app.py (FastAPI create_app), src/rtv/tui/app.py (Textual PlexRealTVApp/run_tui), src/rtv/desktop/app.py (PyWebView main); source inspection only, no apps run",
       "round": "exact",
-      "asOf": "2026-10-05"
+      "asOf": "2026-10-10"
     },
     {
+      "key": "python",
       "value": "3.11+",
       "label": "Python",
-      "source": "grep requires-python pyproject.toml",
+      "source": "manual: github.com/travisjneuman/plex-real-tv at bdec088bac31f9815f8141ef5b6db278b886aecc; pyproject.toml [project].requires-python is >=3.11, SHA256 8ebc2cebff84a20415de8a0c2227f1ea1e310ee3f504e7f6e68d77f45dc05664; declared minimum, not a runtime compatibility test",
       "round": "exact",
-      "asOf": "2026-10-05"
+      "asOf": "2026-10-10"
     },
     {
+      "key": "version",
       "value": "v0.3.0",
-      "label": "Release",
-      "source": "grep '^version' pyproject.toml (0.3.0)",
+      "label": "Package version",
+      "source": "manual: github.com/travisjneuman/plex-real-tv at bdec088bac31f9815f8141ef5b6db278b886aecc; pyproject.toml [project].version is 0.3.0, SHA256 8ebc2cebff84a20415de8a0c2227f1ea1e310ee3f504e7f6e68d77f45dc05664; local declared package version, not a latest remote release lookup",
       "round": "exact",
-      "asOf": "2026-10-05"
+      "asOf": "2026-10-10"
     }
   ],
-  "updated": "2026-10-05"
+  "updated": "2026-10-10"
 }
